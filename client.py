@@ -1,6 +1,8 @@
 import zmq as zmq
 import threading
 from queue import Queue
+import base64 
+import sys
 
 class Client:
     def __init__(self, ip, port):
@@ -14,21 +16,15 @@ class Client:
         zmq_req_socket.connect(f"tcp://{ip}:{port}")
         return zmq_req_socket
 
-    # def Recive(self):
-    #     while True:
-    #         # try:
-    #         if self.send:
-    #             result = self.socket.recv_string()
-    #             if result != 'ack':
-    #                 print(result)
-    #         # except:
-    #         #     print('An error occurred')
-    #         #     break
 
     def ScanResult(self):
+        old_std = sys.stdout
         while True:
-            Html = self.resultQueue.get()
-            print(Html)
+            url, Html = self.resultQueue.get()
+            sys.stdout = sys.stdout = open('Html of ' + url+'.txt', 'w') 
+            r = base64.b64decode(Html)
+            print(r)
+            sys.stdout = old_std
 
     def Send(self):
         while True:
@@ -36,11 +32,11 @@ class Client:
             # self.send = True
             self.socket.send_string(url)
             result = self.socket.recv_json()
-            self.resultQueue.put(result['data'])
+            self.resultQueue.put((url,result['data']))
 
 def main():
     ip = str(input('ip to connect to: '))
-    port = 5559
+    port = 5555
     c = Client(ip, port)
     t1 = threading.Thread(target=c.ScanResult,daemon=True)
     
