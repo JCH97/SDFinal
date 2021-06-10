@@ -36,9 +36,7 @@ class RouterNode:
 
         # Launch pool of worker threads
         for i in range(5):
-            thread = threading.Thread(target=self.worker_routine, args=(url_worker,))
-            thread.daemon = True
-            thread.start()
+            threading.Thread(target=self.worker_routine, args=(url_worker,), daemon = True).start()
 
         zmq.proxy(clients, workers)
 
@@ -47,7 +45,7 @@ class RouterNode:
         workers.close()
         context.term()
 
-    def worker_routine(self, worker_url, context=None):
+    def worker_routine(self, worker_url, context = None):
         """Worker routine"""
         context = context or zmq.Context.instance()
         # Socket to talk to dispatcher
