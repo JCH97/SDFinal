@@ -5,7 +5,7 @@ import time
 from threading import Thread
 
 class ScrapperNode:
-    def __init__(self, port = 9090):
+    def __init__(self, port = 9091):
         self.build(port)
 
     def build(self, port):
@@ -52,7 +52,7 @@ class ScrapperNode:
             
             # do some 'work'
             r = self.scrapp(url)
-            print(r)
+            # print(r)
             #send reply back to client
             socket.send_json(r)
 
