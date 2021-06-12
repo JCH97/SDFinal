@@ -8,6 +8,7 @@ import sched
 import time
 from collections import deque
 from http.client import HTTPConnection
+import base64
 
 
 Pyro4.config.SERIALIZER = 'serpent'
@@ -209,19 +210,19 @@ class Node:
 
     @recover_from_failure
     def Stabilize(self):
-        try:
-            succesor = Pyro4.Proxy(f"PYRONAME:Node.{self.succesor}")
-            if succesor.predecesor == self.previousSucc:
-                succesor.predecesor = None
-            if self.inbetween(succesor.predecesor, self.key + 1, succesor.key,stabilizing=True):
-                with self._successor_lock:
-                    self.succesor = succesor.predecesor
-                    self._successorList.appendleft(self.succesor)
-                    self.GetUrlsFromSuccesor()              
-        
-            succesor.Notify(self._id)
-        except:
-            pass
+        # try:
+        succesor = Pyro4.Proxy(f"PYRONAME:Node.{self.succesor}")
+        if succesor.predecesor == self.previousSucc:
+            succesor.predecesor = None
+        if succesor.predecesor and self.inbetween(succesor.predecesor, self.key + 1, succesor.key,stabilizing=True):
+            with self._successor_lock:
+                self.succesor = succesor.predecesor
+                self._successorList.appendleft(self.succesor)
+                self.GetUrlsFromSuccesor()              
+    
+        succesor.Notify(self._id)
+        # except:
+        #     pass
         #    succesor.Notify(self._id)
      
 
@@ -284,21 +285,30 @@ class Node:
 
     def GetUrl(self, url):
         try:
-            return self.urls[url]
+            r = self.urls[url]
+            print(f'Node {self._id} tiene '+url)
+            return r
         except KeyError:
+            print(f'Node {self._id} todavia no tiene '+url)
             return None
     
     def Save(self, url,html):
-            self.urls[url] = html
+            print(f'Node {self._id} saving '+url)
+            self.urls[url] = base64.b64decode(html)
     
     def GetUrlsFromSuccesor(self):
         try:
             succ = Pyro4.Proxy(f"PYRONAME:Node.{self.succesor}")
             succ_dict = succ.GetUrls
-            for k in succ_dict.Keys():
+            print('')
+            print(f'URLS de mi successor -> {succ_dict}')
+            for k in succ_dict:
                 if hash(k)<=self.key:
                     self.urls[k]= succ_dict[k]
                     del succ_dict[k]#si no sirve pasarle un nuevo dict con los cambios
+            succ = Pyro4.Proxy(f"PYRONAME:Node.{self.succesor}")
+            succ_dict = succ.GetUrls
+            print(f'URLS de mi successor dsps de eliminar -> {succ_dict}')
         except CommunicationError:
             raise Exception("error al comunicarse con succesor")
 

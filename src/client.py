@@ -21,7 +21,7 @@ class Client:
         old_std = sys.stdout
         while True:
             url, Html = self.resultQueue.get()
-            sys.stdout = sys.stdout = open('Html of ' + url+'.txt', 'w') 
+            sys.stdout = sys.stdout = open('Html of.html', 'w') 
             r = base64.b64decode(Html)
             print(r)
             sys.stdout = old_std

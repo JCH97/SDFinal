@@ -2,8 +2,19 @@ from http.client import HTTPConnection
 import zmq
 import time
 import base64
+import urllib3
+import requests
 
 from threading import Thread
+
+ 
+# def gethtml(url):
+#     try: 
+#         req = urllib3.Request(url)
+#         return urllib3. .urlopen(req).read()
+#     except Exception as e:
+#         time.sleep(2)
+#         return ''
 
 class ScrapperNode:
     def __init__(self, port = 9091):
@@ -53,15 +64,17 @@ class ScrapperNode:
             
             # do some 'work'
             r = self.scrapp(url)
-            socket.send_json({'data':base64.b64encode(str(r).encode())})
+            socket.send_json({'data':base64.b64encode(str(r).encode('utf-8'))})
 
     def scrapp(self, url):
-        conexion = HTTPConnection(url)
-        try:   
-            conexion.request('GET', '/')
-            result = conexion.getresponse()
-            content = result.read()
-            return content
+        # conexion = HTTPConnection(url)
+        try:
+            r = requests.get(url)
+            
+            # conexion.request('GET', '/')
+            # result = conexion.getresponse()
+            # content = result.read()
+            return r.text   
         except Exception as e:            
             print(f'An error occurr while retriaving HTML from {url}. {e}')
 

@@ -45,7 +45,7 @@ class RouterNode:
         socket.connect(worker_url)
 
         socketForScraper = context.socket(zmq.REQ)
-        socketForScraper.connect(f"tcp://{ip}:{9091}")
+        socketForScraper.connect(f"tcp://127.0.0.1:{9091}")#no se pueden poner puerto e ip fijos
 
         while True:
 
@@ -54,27 +54,30 @@ class RouterNode:
             print("Received request: [ %s ]" % (url))
             
             # do some 'work'
-            r = self.SaveClient(url,socketForScraper)
-            print(r)
-            #send reply back to client
-            socket.send_json(r)
-            self.SaveInChord(url, r['data'])
-
-
-    def SaveClient(self,url,socketForScraper):
-        hashedUrl = hash(url)
-        try:
-            result = self.LookUrlInChord(hashedUrl,url) 
-            if not result:
+            r = self.CheckInChord(url,socketForScraper)
+            if not r:
                 socketForScraper.send_string(url)
                 r = socketForScraper.recv_json()
-                return r
-        except :
-            print("Error")
+            #send reply back to client
+                socket.send_json(r)
+                self.SaveInChord(url, r['data'])
+                
+            else:
+                socket.send_json(r)
+            
+
+    def CheckInChord(self,url,socketForScraper):
+        hashedUrl = hash(url)
+        # try:
+        s = self.LookUrlInChord(hashedUrl,url) 
+        print(s)
+        return s
+        # except :
+        #     print("Error")
             
     def SaveInChord(self, url, html):
         try:
-            id = hashedUrl % 2 ** 5
+            id = hash(url) % 2 ** 5
             entry_point = Pyro4.Proxy(f"PYRONAME:Node.{8}")#aki hay q poner mas de uno por si falla
             chord_node_id = entry_point.LookUp(id)
             chord_node_with_html = Pyro4.Proxy(f"PYRONAME:Node.{chord_node_id}")
@@ -87,10 +90,14 @@ class RouterNode:
     def LookUrlInChord(self,hashedUrl,url):
         try:
             id = hashedUrl % 2 ** 5
+            print('nodo donde deberia estar ', id)
             entry_point = Pyro4.Proxy(f"PYRONAME:Node.{8}")#aki hay q poner mas de uno por si falla
             chord_node_id = entry_point.LookUp(id)
+            print('nodo en el que voy a buscar', chord_node_id)
+
             chord_node_with_html = Pyro4.Proxy(f"PYRONAME:Node.{chord_node_id}")
             c = chord_node_with_html.GetUrl(url)
+            print(c)
             return c
         except CommunicationError:
             print('ERRRRRROORRRRR')
