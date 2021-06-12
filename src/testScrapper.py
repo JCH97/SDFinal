@@ -3,12 +3,12 @@ from threading import Thread
 import time
 
 def main():
-    urls = ["https://google.com"]
+    urls = ["google.com"]
 
     context = zmq.Context()
     socket = context.socket(zmq.REQ)
 
-    socket.connect("tcp://localhost:%s" % 9090)
+    # socket.connect("tcp://localhost:%s" % 9090)
     socket.connect("tcp://localhost:%s" % 9091)
 
     while 1:
@@ -31,6 +31,7 @@ def worker(url, socket):
     time.sleep(1)
 
     ans = socket.recv_json()
+    print(ans)
     print('after recv')
     # print(ans)
 

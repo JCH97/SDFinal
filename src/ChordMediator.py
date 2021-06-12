@@ -35,6 +35,7 @@ class MediatorCh:
                         self.nodes.append(uriNode)
                         return uri
                     except:
+                        print('remove broken node')
                         self._nodes.remove(uri)
                     
                 except IndexError:

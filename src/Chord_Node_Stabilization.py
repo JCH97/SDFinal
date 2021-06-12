@@ -61,6 +61,9 @@ class Node:
             print("Entry point broken try another")
             return
 
+    @property
+    def GetUrls(self):
+        return self.urls
 
     @property
     def SuccLock(self):
@@ -192,6 +195,7 @@ class Node:
             try:
                 self.succesor = n.FindSuccessor(self.key)
                 self._successorList.append(self.key)
+                self.GetUrlsFromSuccesor()   
                 if n.key == self.key:
                     raise Exception('Node already in chord\n')
 
@@ -212,11 +216,13 @@ class Node:
             if self.inbetween(succesor.predecesor, self.key + 1, succesor.key,stabilizing=True):
                 with self._successor_lock:
                     self.succesor = succesor.predecesor
-                    self._successorList.appendleft(self.succesor)              
+                    self._successorList.appendleft(self.succesor)
+                    self.GetUrlsFromSuccesor()              
         
             succesor.Notify(self._id)
         except:
-           succesor.Notify(self._id)
+            pass
+        #    succesor.Notify(self._id)
      
 
     def Notify(self,id):
@@ -280,25 +286,24 @@ class Node:
         try:
             return self.urls[url]
         except KeyError:
-            html = self.Scraper(url)
+            return None
+    
+    def Save(self, url,html):
             self.urls[url] = html
-            return html
     
-    def Scraper(self,url):
-        old_std = sys.stdout
-        conexion = HTTPConnection(url)
-        try:   
-            conexion.request('GET', '/')
-            # sys.stdout = open('Html of ' + url+'.txt', 'w') 
-            result = conexion.getresponse()
-            content = result.read()
-            # print(content)
-            # sys.stdout = old_std
-            return content
-        except Exception as e:            
-            print(f'An error occurr while retriaving HTML from {url}. {e}')
+    def GetUrlsFromSuccesor(self):
+        try:
+            succ = Pyro4.Proxy(f"PYRONAME:Node.{self.succesor}")
+            succ_dict = succ.GetUrls
+            for k in succ_dict.Keys():
+                if hash(k)<=self.key:
+                    self.urls[k]= succ_dict[k]
+                    del succ_dict[k]#si no sirve pasarle un nuevo dict con los cambios
+        except CommunicationError:
+            raise Exception("error al comunicarse con succesor")
 
-    
+
+
 def PrintStatus(status):
     s = ['key','uri','predeccessor',"successor's list",'ft','alive']
     for i,stat in enumerate(status):

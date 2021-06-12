@@ -1,17 +1,9 @@
 import Pyro4
-# import zmq
 from Pyro4.errors import PyroError, CommunicationError
 import time
 import threading
 import zmq
-# import threading
-# from queue import Queue
-# import socket
 
-# url = 'example.com'
-
-# # clients={}
-# # replay_lock = threading.Lock()
 
 class RouterNode:
     def __init__(self,port):
@@ -50,8 +42,10 @@ class RouterNode:
         context = context or zmq.Context.instance()
         # Socket to talk to dispatcher
         socket = context.socket(zmq.REP)
-
         socket.connect(worker_url)
+
+        socketForScraper = context.socket(zmq.REQ)
+        socketForScraper.connect(f"tcp://{ip}:{9091}")
 
         while True:
 
@@ -60,20 +54,36 @@ class RouterNode:
             print("Received request: [ %s ]" % (url))
             
             # do some 'work'
-            r = self.SaveClient(url)
+            r = self.SaveClient(url,socketForScraper)
             print(r)
             #send reply back to client
             socket.send_json(r)
+            self.SaveInChord(url, r['data'])
 
 
-    def SaveClient(self,url):
+    def SaveClient(self,url,socketForScraper):
         hashedUrl = hash(url)
         try:
-            return self.LookUrlInChord(hashedUrl,url) 
+            result = self.LookUrlInChord(hashedUrl,url) 
+            if not result:
+                socketForScraper.send_string(url)
+                r = socketForScraper.recv_json()
+                return r
         except :
             print("Error")
             
-                
+    def SaveInChord(self, url, html):
+        try:
+            id = hashedUrl % 2 ** 5
+            entry_point = Pyro4.Proxy(f"PYRONAME:Node.{8}")#aki hay q poner mas de uno por si falla
+            chord_node_id = entry_point.LookUp(id)
+            chord_node_with_html = Pyro4.Proxy(f"PYRONAME:Node.{chord_node_id}")
+            chord_node_with_html.Save(url,html)
+        except CommunicationError:
+            print('ERRRRRROORRRRR')
+            #probar otro entry point
+            pass
+
     def LookUrlInChord(self,hashedUrl,url):
         try:
             id = hashedUrl % 2 ** 5

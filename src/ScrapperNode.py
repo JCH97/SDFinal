@@ -1,6 +1,7 @@
-import requests as req
+from http.client import HTTPConnection
 import zmq
 import time
+import base64
 
 from threading import Thread
 
@@ -52,25 +53,18 @@ class ScrapperNode:
             
             # do some 'work'
             r = self.scrapp(url)
-            # print(r)
-            #send reply back to client
-            socket.send_json(r)
-
-    # def recv(self):
-    #     while 1:
-    #         print('wait')
-    #         url = self.sock.recv()
-    #         # self.sock.send_string("check")
-
-    #         Thread(target = self.scrapp, args = (url,), daemon = True).start()
-
-    #         time.sleep(5)
+            socket.send_json({'data':base64.b64encode(str(r).encode())})
 
     def scrapp(self, url):
-        ans = req.get(url)
-        return ans.text
+        conexion = HTTPConnection(url)
+        try:   
+            conexion.request('GET', '/')
+            result = conexion.getresponse()
+            content = result.read()
+            return content
+        except Exception as e:            
+            print(f'An error occurr while retriaving HTML from {url}. {e}')
 
-        # print(ans.text)
 
 if __name__ == '__main__':
     # a = req.get("https://google.com")
