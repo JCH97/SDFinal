@@ -64,23 +64,17 @@ class ScrapperNode:
             
             # do some 'work'
             r = self.scrapp(url)
-            socket.send_json({'data':base64.b64encode(str(r).encode('utf-8'))})
+            a = {'data':base64.b64encode(str(r).encode())}
+            socket.send_json(a)
 
     def scrapp(self, url):
-        # conexion = HTTPConnection(url)
         try:
-            r = requests.get(url)
+            return requests.get(url).text   
+        except:  
+            print(f'An error occurr while retriaving HTML from {url}.') 
+            return -1        
             
-            # conexion.request('GET', '/')
-            # result = conexion.getresponse()
-            # content = result.read()
-            return r.text   
-        except Exception as e:            
-            print(f'An error occurr while retriaving HTML from {url}. {e}')
 
 
 if __name__ == '__main__':
-    # a = req.get("https://google.com")
-    # print('after')
-
     ScrapperNode()

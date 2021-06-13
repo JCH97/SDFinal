@@ -1,9 +1,13 @@
 import Pyro4
+import Pyro4.util
 from Pyro4.errors import PyroError, CommunicationError
 import time
 import threading
 import zmq
+import sys
+import base64 
 
+sys.excepthook = Pyro4.util.excepthook
 
 class RouterNode:
     def __init__(self,port):
@@ -48,19 +52,18 @@ class RouterNode:
         socketForScraper.connect(f"tcp://127.0.0.1:{9091}")#no se pueden poner puerto e ip fijos
 
         while True:
-
             url  = socket.recv_string()
-
             print("Received request: [ %s ]" % (url))
             
-            # do some 'work'
             r = self.CheckInChord(url,socketForScraper)
             if not r:
                 socketForScraper.send_string(url)
                 r = socketForScraper.recv_json()
-            #send reply back to client
                 socket.send_json(r)
-                self.SaveInChord(url, r['data'])
+
+                result = base64.b64decode(r['data'])
+                if result != b'-1':
+                    self.SaveInChord(url, r['data'])
                 
             else:
                 socket.send_json(r)
@@ -92,13 +95,14 @@ class RouterNode:
             id = hashedUrl % 2 ** 5
             print('nodo donde deberia estar ', id)
             entry_point = Pyro4.Proxy(f"PYRONAME:Node.{8}")#aki hay q poner mas de uno por si falla
+           
             chord_node_id = entry_point.LookUp(id)
             print('nodo en el que voy a buscar', chord_node_id)
 
             chord_node_with_html = Pyro4.Proxy(f"PYRONAME:Node.{chord_node_id}")
             c = chord_node_with_html.GetUrl(url)
-            print(c)
             return c
+
         except CommunicationError:
             print('ERRRRRROORRRRR')
             #probar otro entry point

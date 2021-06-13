@@ -7,7 +7,6 @@ import random
 import sched
 import time
 from collections import deque
-from http.client import HTTPConnection
 import base64
 
 
@@ -65,6 +64,10 @@ class Node:
     @property
     def GetUrls(self):
         return self.urls
+    
+    @GetUrls.setter
+    def GetUrls(self,value):
+        self.urls = value
 
     @property
     def SuccLock(self):
@@ -299,16 +302,17 @@ class Node:
     def GetUrlsFromSuccesor(self):
         try:
             succ = Pyro4.Proxy(f"PYRONAME:Node.{self.succesor}")
+            succ_dict_copy = succ.GetUrls.copy()
             succ_dict = succ.GetUrls
             print('')
-            print(f'URLS de mi successor -> {succ_dict}')
-            for k in succ_dict:
+            print(f'URLS de mi successor -> {succ_dict.keys()}')
+            for k in succ_dict_copy:
                 if hash(k)<=self.key:
-                    self.urls[k]= succ_dict[k]
+                    self.urls[k]= succ_dict_copy[k]
                     del succ_dict[k]#si no sirve pasarle un nuevo dict con los cambios
             succ = Pyro4.Proxy(f"PYRONAME:Node.{self.succesor}")
-            succ_dict = succ.GetUrls
-            print(f'URLS de mi successor dsps de eliminar -> {succ_dict}')
+            succ.GetUrls = succ_dict
+            print(f'URLS de mi successor dsps de eliminar -> {succ.GetUrls.keys()}')
         except CommunicationError:
             raise Exception("error al comunicarse con succesor")
 
@@ -320,7 +324,7 @@ def PrintStatus(status):
         print(f'{s[i]} ->  {stat}')
     print('')
 
-def process_loop(node,uriEntryPoint = None):
+def process_loop(node):
     while True:
         input_string = input('Enter command or help for list of commands:\n').split()
 
@@ -340,8 +344,8 @@ def process_loop(node,uriEntryPoint = None):
         #     node.Leave()
         #     break
 
-        elif command == 'join':
-            node.Join(uri = uriEntryPoint)
+        # elif command == 'join':
+        #     node.Join(uri = uriEntryPoint)
 
         elif command == 'status':
             PrintStatus(node.Status)
@@ -395,11 +399,11 @@ def main(argv):
                 
     daemon = Pyro4.Daemon()    
     node = Node(id, daemon)
-
+    node.Join(uri)
     
     try:
         init(daemon)
-        process_loop(node,uri)
+        process_loop(node)
     finally:
         daemon.close()
 

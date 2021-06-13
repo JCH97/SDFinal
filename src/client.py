@@ -21,10 +21,15 @@ class Client:
         old_std = sys.stdout
         while True:
             url, Html = self.resultQueue.get()
-            sys.stdout = sys.stdout = open('Html of.html', 'w') 
             r = base64.b64decode(Html)
-            print(r)
-            sys.stdout = old_std
+            if r != b'-1':       
+                sys.stdout  = open('Html of '+ url[8:] + '.html', 'w') 
+                r = base64.b64decode(Html)
+                print(r)
+                sys.stdout = old_std
+            else:
+                print("There was an error trying to retrive de html")
+                print('')
 
     def Send(self):
         while True:
@@ -39,12 +44,9 @@ def main():
     port = 5555
     c = Client(ip, port)
     t1 = threading.Thread(target=c.ScanResult,daemon=True)
-    
-    # t2 = threading.Thread(target=c.Send,daemon=True)
     t1.start()
-    # t2.start()
     c.Send()
-    # t2.join()
+
 
 if __name__ == "__main__":
     main()
