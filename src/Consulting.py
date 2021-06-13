@@ -49,25 +49,45 @@ class RouterNode:
         socket.connect(worker_url)
 
         socketForScraper = context.socket(zmq.REQ)
-        socketForScraper.connect(f"tcp://127.0.0.1:{9091}")#no se pueden poner puerto e ip fijos
+        socketForScraper.connect(f"tcp://127.0.0.1:{9091}")
+        socketForScraper.connect(f"tcp://127.0.0.1:{9092}")#no se pueden poner puerto e ip fijos
+        socketForScraper.connect(f"tcp://127.0.0.1:{9095}")
+        socketForScraper.connect(f"tcp://127.0.0.1:{9096}")
+        socketForScraper.connect(f"tcp://127.0.0.1:{9098}")
+        socketForScraper.connect(f"tcp://127.0.0.1:{9099}")
+        socketForScraper.connect(f"tcp://127.0.0.1:{8095}")
+        socketForScraper.connect(f"tcp://127.0.0.1:{9596}")
+
+        poller = zmq.Poller()
+        poller.register(socketForScraper, zmq.POLLIN)
+        poller.register(socket,zmq.POLLIN)
 
         while True:
-            url  = socket.recv_string()
-            print("Received request: [ %s ]" % (url))
-            
-            r = self.CheckInChord(url,socketForScraper)
-            if not r:
-                socketForScraper.send_string(url)
-                r = socketForScraper.recv_json()
-                socket.send_json(r)
-
-                result = base64.b64decode(r['data'])
-                if result != b'-1':
-                    self.SaveInChord(url, r['data'])
+            socks = dict(poller.poll())
+            if socket in socks and socks[socket] == zmq.POLLIN:
+                url  = socket.recv_string()
+                print("Received request: [ %s ]" % (url))
                 
-            else:
-                socket.send_json(r)
-            
+                r = self.CheckInChord(url,socketForScraper)
+                if not r:
+                    socketForScraper.send_string(url)
+
+                    socks = dict(poller.poll(2000))
+                    if socks:
+                        if socks.get(socketForScraper) == zmq.POLLIN:
+                            r = socketForScraper.recv_json(zmq.NOBLOCK)
+                            # print("got message ",work_receiver.recv(zmq.NOBLOCK))
+
+                    # r = socketForScraper.recv_json()
+                            socket.send_json(r)
+
+                            result = base64.b64decode(r['data'])
+                            if result != b'-1':
+                                self.SaveInChord(url, r['data'])
+                    
+                else:
+                    socket.send_json(r)
+                
 
     def CheckInChord(self,url,socketForScraper):
         hashedUrl = hash(url)
