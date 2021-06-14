@@ -303,24 +303,22 @@ class Node:
             self.urls[url] = base64.b64decode(html)
     
     def GetUrlsFromSuccesor(self):
-        try:
-            succ = Pyro4.Proxy(f"PYRONAME:Node.{self.succesor}")
-            succ_dict_copy = succ.GetUrls.copy()
-            succ_dict = succ.GetUrls
-            print('')
-            print(f'URLS de mi successor -> {succ_dict.keys()}')
-            for k in succ_dict_copy:
-                if hash(k)<=self.key:
-                    self.urls[k]= succ_dict_copy[k]
-                    del succ_dict[k]#si no sirve pasarle un nuevo dict con los cambios
-            
-            succ = Pyro4.Proxy(f"PYRONAME:Node.{self.succesor}")
-            succ.GetUrls = succ_dict.copy()
-            print(f'URLS de mi successor dsps de eliminar -> {succ.GetUrls.keys()}')
-            print(f'Mis urls -> {self.GetUrls.keys()}')
+        succ = Pyro4.Proxy(f"PYRONAME:Node.{self.succesor}")
+        succ_dict_copy = succ.GetUrls.copy()
+        succ_dict = succ.GetUrls
+        print('')
+        print(f'URLS de mi successor -> {succ_dict.keys()}')
+        for k in succ_dict_copy:
+            if hash(k)<=self.key:
+                self.urls[k]= succ_dict_copy[k]
+                del succ_dict[k]#si no sirve pasarle un nuevo dict con los cambios
+        
+        succ = Pyro4.Proxy(f"PYRONAME:Node.{self.succesor}")
+        succ.GetUrls = succ_dict.copy()
+        print(f'URLS de mi successor dsps de eliminar -> {succ.GetUrls.keys()}')
+        print(f'Mis urls -> {self.GetUrls.keys()}')
 
-        except CommunicationError:
-            raise Exception("error al comunicarse con succesor")
+       
 
 
 
