@@ -7,31 +7,23 @@ import requests
 
 from threading import Thread
 
- 
-# def gethtml(url):
-#     try: 
-#         req = urllib3.Request(url)
-#         return urllib3. .urlopen(req).read()
-#     except Exception as e:
-#         time.sleep(2)
-#         return ''
-
 class ScrapperNode:
-    def __init__(self, port = 9091):
-        self.build(port)
+    def __init__(self,ip='127.0.0.1', port = 9092):
+        self.build(port,ip)
 
-    def build(self, port):
+    def build(self, port,ip):
         """Server routine"""
 
         url_worker = "inproc://workers"
-        url_client = f"tcp://*:{port}"
+        # url_client = f"tcp://*:{port}"
 
         # Prepare our context and sockets
         context = zmq.Context.instance()
 
         # Socket to talk to clients
         clients = context.socket(zmq.ROUTER)
-        clients.bind(url_client)
+        clients.connect(f"tcp://{ip}:%s" % port)
+        # clients.bind(url_client)
 
         # Socket to talk to workers
         workers = context.socket(zmq.DEALER)
@@ -53,7 +45,6 @@ class ScrapperNode:
         context = context or zmq.Context.instance()
         # Socket to talk to dispatcher
         socket = context.socket(zmq.REP)
-
         socket.connect(worker_url)
 
         while True:
@@ -64,6 +55,7 @@ class ScrapperNode:
             
             # do some 'work'
             r = self.scrapp(url)
+            print(r)
             a = {'data':base64.b64encode(str(r).encode())}
             socket.send_json(a)
 
@@ -77,4 +69,11 @@ class ScrapperNode:
 
 
 if __name__ == '__main__':
-    ScrapperNode()
+    ip =input("ip to connect to broker: ")
+    p=None
+    try:
+        p =int(input("Port to connect to broker: "))
+    except:
+        pass
+
+    ScrapperNode(ip,p)

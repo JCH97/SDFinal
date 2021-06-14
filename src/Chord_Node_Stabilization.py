@@ -127,6 +127,9 @@ class Node:
             self.predecesor if self.predecesor else None, self._successorList,\
                 self._fingerTable, self.alive
 
+    def IsAlive(self):
+        return self.alive
+
     def Start(self, i):
         return (self.key + 2**(i-1)) % 2**self._bitsKey
 
@@ -215,8 +218,8 @@ class Node:
     def Stabilize(self):
         # try:
         succesor = Pyro4.Proxy(f"PYRONAME:Node.{self.succesor}")
-        if succesor.predecesor == self.previousSucc:
-            succesor.predecesor = None
+        # if succesor.predecesor == self.previousSucc:
+        #     succesor.predecesor = None
         if succesor.predecesor and self.inbetween(succesor.predecesor, self.key + 1, succesor.key,stabilizing=True):
             with self._successor_lock:
                 self.succesor = succesor.predecesor
@@ -310,9 +313,12 @@ class Node:
                 if hash(k)<=self.key:
                     self.urls[k]= succ_dict_copy[k]
                     del succ_dict[k]#si no sirve pasarle un nuevo dict con los cambios
+            
             succ = Pyro4.Proxy(f"PYRONAME:Node.{self.succesor}")
-            succ.GetUrls = succ_dict
+            succ.GetUrls = succ_dict.copy()
             print(f'URLS de mi successor dsps de eliminar -> {succ.GetUrls.keys()}')
+            print(f'Mis urls -> {self.GetUrls.keys()}')
+
         except CommunicationError:
             raise Exception("error al comunicarse con succesor")
 

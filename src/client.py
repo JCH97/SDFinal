@@ -32,12 +32,18 @@ class Client:
                 print('')
 
     def Send(self):
+        poller = zmq.Poller()
+        poller.register(self.socket, zmq.POLLIN)
+
         while True:
             url = input('url to get HTML: ')
-            # self.send = True
+            print('')
             self.socket.send_string(url)
-            result = self.socket.recv_json()
-            self.resultQueue.put((url,result['data']))
+            socks = dict(poller.poll(5000))
+            if socks:
+                if socks.get(self.socket) == zmq.POLLIN:
+                    result = self.socket.recv_json(zmq.NOBLOCK)
+                    self.resultQueue.put((url,result['data']))
 
 def main():
     ip = str(input('ip to connect to: '))

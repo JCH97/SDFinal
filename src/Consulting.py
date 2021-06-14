@@ -49,51 +49,40 @@ class RouterNode:
         socket.connect(worker_url)
 
         socketForScraper = context.socket(zmq.REQ)
-        socketForScraper.connect(f"tcp://127.0.0.1:{9091}")
-        socketForScraper.connect(f"tcp://127.0.0.1:{9092}")#no se pueden poner puerto e ip fijos
-        socketForScraper.connect(f"tcp://127.0.0.1:{9095}")
-        socketForScraper.connect(f"tcp://127.0.0.1:{9096}")
-        socketForScraper.connect(f"tcp://127.0.0.1:{9098}")
-        socketForScraper.connect(f"tcp://127.0.0.1:{9099}")
-        socketForScraper.connect(f"tcp://127.0.0.1:{8095}")
-        socketForScraper.connect(f"tcp://127.0.0.1:{9596}")
+        socketForScraper.connect(f"tcp://127.0.0.1:{9091}")#no se pueden poner puerto e ip fijos
+       
 
         poller = zmq.Poller()
         poller.register(socketForScraper, zmq.POLLIN)
-        poller.register(socket,zmq.POLLIN)
 
         while True:
-            socks = dict(poller.poll())
-            if socket in socks and socks[socket] == zmq.POLLIN:
-                url  = socket.recv_string()
-                print("Received request: [ %s ]" % (url))
-                
-                r = self.CheckInChord(url,socketForScraper)
-                if not r:
-                    socketForScraper.send_string(url)
+            url  = socket.recv_string()
+            print("Received request: [ %s ]" % (url))
+            
+            r = self.CheckInChord(url,socketForScraper)
+            if not r:
+                socketForScraper.send_string(url)
 
-                    socks = dict(poller.poll(2000))
-                    if socks:
-                        if socks.get(socketForScraper) == zmq.POLLIN:
-                            r = socketForScraper.recv_json(zmq.NOBLOCK)
-                            # print("got message ",work_receiver.recv(zmq.NOBLOCK))
+                socks = dict(poller.poll(4000))
+                if socks:
+                    if socks.get(socketForScraper) == zmq.POLLIN:
+                        r = socketForScraper.recv_json(zmq.NOBLOCK)
+                        socket.send_json(r)
+                        result = base64.b64decode(r['data'])
 
-                    # r = socketForScraper.recv_json()
-                            socket.send_json(r)
-
-                            result = base64.b64decode(r['data'])
-                            if result != b'-1':
-                                self.SaveInChord(url, r['data'])
-                    
+                        if result != b'-1':
+                            self.SaveInChord(url, r['data'])
                 else:
-                    socket.send_json(r)
+                    socket.send_json({'data':base64.b64encode(b'-1')})
+                
+            else:
+                socket.send_json(r)
                 
 
     def CheckInChord(self,url,socketForScraper):
         hashedUrl = hash(url)
         # try:
         s = self.LookUrlInChord(hashedUrl,url) 
-        print(s)
         return s
         # except :
         #     print("Error")
@@ -101,30 +90,47 @@ class RouterNode:
     def SaveInChord(self, url, html):
         try:
             id = hash(url) % 2 ** 5
-            entry_point = Pyro4.Proxy(f"PYRONAME:Node.{8}")#aki hay q poner mas de uno por si falla
-            chord_node_id = entry_point.LookUp(id)
-            chord_node_with_html = Pyro4.Proxy(f"PYRONAME:Node.{chord_node_id}")
-            chord_node_with_html.Save(url,html)
+            entry_point = self.FindEntryPoint() #Pyro4.Proxy(f"PYRONAME:Node.{8}")#aki hay q poner mas de uno por si falla
+            if entry_point:
+                chord_node_id = entry_point.LookUp(id)
+                chord_node_with_html = Pyro4.Proxy(f"PYRONAME:Node.{chord_node_id}")
+                chord_node_with_html.Save(url,html)
+            else: 
+                return None
         except CommunicationError:
             print('ERRRRRROORRRRR')
             #probar otro entry point
             pass
 
+    def FindEntryPoint(self):
+        with Pyro4.locateNS() as ns:
+            for _,node_uri in ns.list(prefix=f"Node").items():
+                try:
+                    n = Pyro4.Proxy(node_uri)
+                    n.IsAlive()
+                    return n#si no sirve mandar el id
+                except CommunicationError:
+                    continue
+            return None
+
     def LookUrlInChord(self,hashedUrl,url):
         try:
             id = hashedUrl % 2 ** 5
             print('nodo donde deberia estar ', id)
-            entry_point = Pyro4.Proxy(f"PYRONAME:Node.{8}")#aki hay q poner mas de uno por si falla
-           
-            chord_node_id = entry_point.LookUp(id)
-            print('nodo en el que voy a buscar', chord_node_id)
+            entry_point = self.FindEntryPoint() #Pyro4.Proxy(f"PYRONAME:Node.{8}")#aki hay q poner mas de uno por si falla
+            if entry_point:
+                chord_node_id = entry_point.LookUp(id)
+                print('nodo en el que voy a buscar', chord_node_id)
 
-            chord_node_with_html = Pyro4.Proxy(f"PYRONAME:Node.{chord_node_id}")
-            c = chord_node_with_html.GetUrl(url)
-            return c
+                chord_node_with_html = Pyro4.Proxy(f"PYRONAME:Node.{chord_node_id}")
+                c = chord_node_with_html.GetUrl(url)
+                return c
+            else:
+                return None
 
         except CommunicationError:
             print('ERRRRRROORRRRR')
+            return None
             #probar otro entry point
             pass
 

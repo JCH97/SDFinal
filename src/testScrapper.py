@@ -3,7 +3,7 @@ from threading import Thread
 import time
 
 def main():
-    urls = ["google.com"]
+    urls = ["https://google.com"]
 
     context = zmq.Context()
     socket = context.socket(zmq.REQ)
