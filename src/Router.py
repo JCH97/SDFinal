@@ -49,7 +49,7 @@ class RouterNode:
         socket.connect(worker_url)
 
         socketForScraper = context.socket(zmq.REQ)
-        socketForScraper.connect(f"tcp://10.0.0.5:{9091}") #no se pueden poner puerto e ip fijos
+        socketForScraper.connect(f"tcp://127.0.0.1:{9091}") #no se pueden poner puerto e ip fijos
        
 
         poller = zmq.Poller()
@@ -68,17 +68,17 @@ class RouterNode:
                     if socks.get(socketForScraper) == zmq.POLLIN:
                         r = socketForScraper.recv_json(zmq.NOBLOCK)
                         socket.send_json(r)
-                        result = r['data']
+                        # result = r['data']
 
-                        if result != b'-1':
+                        if r['data'] != -1:
                             self.SaveInChord(url, r['data'])
                 else:
-                    socket.send_json({'data': 'Hola'})
+                    socket.send_json({'data': -1})
                 
             else:
-                decoded = base64.b64decode(r['data'])
+                # decoded = base64.b64decode(r['data'])
 
-                socket.send_json({'data': decoded})
+                socket.send_json({'data':r})
                 
 
     def CheckInChord(self,url,socketForScraper):

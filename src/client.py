@@ -3,12 +3,14 @@ import threading
 from queue import Queue
 import base64 
 import sys
+import time
 
 class Client:
     def __init__(self, ip, port):
         self.socket = self.build(ip, port)
         self.send = False
         self.resultQueue = Queue()
+        
 
     def build(self,ip, port):
         context = zmq.Context()
@@ -21,23 +23,25 @@ class Client:
         old_std = sys.stdout
         while True:
             url, Html = self.resultQueue.get()
-            print(Html)
+          
+            # print(Html)
             # r = base64.b64decode(Html)
             # print(r)
-            # if r != b'-1':       
-            #     sys.stdout  = open('Html of '+ url[8:] + '.html', 'w') 
-            #     r = base64.b64decode(Html)
-            #     print(r)
-            #     sys.stdout = old_std
-            # else:
-            #     print("There was an error trying to retrive de html")
-            #     print('')
+            url = url.replace('/', '')
+            if Html != -1:       
+                sys.stdout  = open('Html of '+ url + '.html', 'w') 
+                print(Html)
+                sys.stdout = old_std
+            else:
+                print("There was an error trying to retrive de html")
+                print('')
 
     def Send(self):
         poller = zmq.Poller()
         poller.register(self.socket, zmq.POLLIN)
 
         while True:
+            time.sleep(0.2)
             url = input('url to get HTML: ')
             print('')
             self.socket.send_string(url)

@@ -8,7 +8,7 @@ import sched
 import time
 from collections import deque
 import base64
-import socket
+
 
 Pyro4.config.SERIALIZER = 'serpent'
 sys.excepthook = Pyro4.util.excepthook
@@ -31,7 +31,7 @@ class KeyOutOfRange(BaseException):
 @Pyro4.expose
 class Node:
     def __init__(self,id = None, Daemon = None):
-        self._bitsKey = None
+        self._bitsKey = 64
         self._id = id
         self._fingerTable = None
         self._successorList = deque(maxlen=4)
@@ -43,23 +43,27 @@ class Node:
         self.alive = False
         self.previousSucc = None
         self.urls = {}
-    
+        self.Register(Daemon)
+        
+    def Register(self,Daemon):
         if Daemon:
             self.uri = Daemon.register(self)
             if id == None:
-                self.fixKey()
+                # self.fixKey()
                 self.key = hash(self.uri) % 2**self._bitsKey
 
-            with Pyro4.locateNS() as ns:
-                ns.register(f"Node.{self.key}", self.uri)
+            if self.key<0 or self.key>2**self._bitsKey-1:
+                raise Exception(f"Node out of range, the id must be between [{0}, {2**self._bitsKey-1}]\n")
 
-    def fixKey(self):
-        try:
-            mediator = Pyro4.Proxy(f"PYRONAME:Mediator")
-            self._bitsKey = mediator.mbits
-        except CommunicationError:
-            print("Entry point broken try another")
-            return
+            self._fingerTable = [None]*(self.bitsKey + 1)
+
+    # def fixKey(self):
+    #     try:
+    #         mediator = Pyro4.Proxy(f"PYRONAME:Mediator")
+    #         self._bitsKey = mediator.mbits
+    #     except CommunicationError:
+    #         print("Entry point broken try another")
+    #         return
 
     @property
     def GetUrls(self):
@@ -168,53 +172,93 @@ class Node:
                 return self._fingerTable[i]
         return self.key
 
-    def Join(self,uri=None):
-        n = None
-
-        if not uri:
-            try:
-                mediator = Pyro4.Proxy(f"PYRONAME:Mediator")
-                print('1')
-                n_uri = mediator.GetUriNode(self.uri)
-                print('2')
-                if n_uri == '-1':
-                    raise Exception('Node already en chord\n')
-                if n_uri != '':
-                    n = Pyro4.Proxy(n_uri)
-                self._bitsKey = mediator.mbits
-            except CommunicationError:
-                raise Exception("Entry point broken try another\n")
-                return
-        else:
+    def FindEntryPoint(self,uri = None):
+        if uri:
             try:
                 n = Pyro4.Proxy(uri)
-                n_uri = n.uri 
-                self._bitsKey = n.bitsKey
+                n.IsAlive()
+                return n
             except CommunicationError:
-                raise Exception("Entry point broken try another\n")
-                
-        
-        if self.key<0 or self.key>2**self._bitsKey-1:
-            raise Exception(f"Node out of range, the id must be between [{0}, {2**self._bitsKey-1}]\n")
+                return None
+
+        with Pyro4.locateNS() as ns:
+            for _,node_uri in ns.list(prefix=f"Node").items():
+                try:
+                    n = Pyro4.Proxy(node_uri)
+                    n.IsAlive()
+                    return n
+                except CommunicationError:
+                    continue
+            return None
 
 
-        self._fingerTable = [None]*(self.bitsKey + 1)
+    def Join(self,uri=None):
+        n = None
+        mediator = self.FindEntryPoint(uri)
 
-        if n_uri != '':
+        if mediator:
             try:
-                self.succesor = n.FindSuccessor(self.key)
-                self._successorList.append(self.key)
-                self.GetUrlsFromSuccesor()   
-                if n.key == self.key:
-                    raise Exception('Node already in chord\n')
+                self.succesor = mediator.FindSuccessor(self.key)
+                if mediator.key == self.key or self.succesor == self.key:
+                    raise Exception('This node is already in chord system')
+                else:
+                    # try:                 
+                    self._successorList.append(self.key)
+                    self.GetUrlsFromSuccesor()   
 
-            except CommunicationError:
-                print("Successor broken \n")
+                    # except CommunicationError:
+                    #     print("Successor broken \n")
+            except ConnectionError:
+                print('Entry Point broken')
+            
         else:
             self.succesor = self.key
 
+        with Pyro4.locateNS() as ns:
+                ns.register(f"Node.{self.key}", self.uri)
+
         self._successorList.appendleft(self.succesor)
         self.InitiateNode()
+
+            #     n_uri = mediator.GetUriNode(self.uri)
+            #     if n_uri == '-1':
+            #         raise Exception('Node already en chord\n')
+            #     if n_uri != '':
+            #         n = Pyro4.Proxy(n_uri)
+            #     self._bitsKey = mediator.mbits
+            # except CommunicationError:
+            #     raise Exception("Entry point broken try another\n")
+            #     return
+        # else:
+        #     try:
+        #         n = Pyro4.Proxy(uri)
+        #         n_uri = n.uri 
+        #         # self._bitsKey = n.bitsKey
+        #     except CommunicationError:
+        #         raise Exception("Entry point broken try another\n")
+                
+        
+        # if self.key<0 or self.key>2**self._bitsKey-1:
+        #     raise Exception(f"Node out of range, the id must be between [{0}, {2**self._bitsKey-1}]\n")
+
+
+        # self._fingerTable = [None]*(self.bitsKey + 1)
+
+        # if n_uri != '':
+        #     try:
+        #         self.succesor = n.FindSuccessor(self.key)
+        #         self._successorList.append(self.key)
+        #         self.GetUrlsFromSuccesor()   
+        #         if n.key == self.key:
+        #             raise Exception('Node already in chord\n')
+
+        #     except CommunicationError:
+        #         print("Successor broken \n")
+        # else:
+        #     self.succesor = self.key
+
+        # self._successorList.appendleft(self.succesor)
+        # self.InitiateNode()
 
     @recover_from_failure
     def Stabilize(self):
@@ -257,17 +301,6 @@ class Node:
         t2.setDaemon(True)
         t1.start()
         t2.start()
-
-    def Leave(self):  
-        succesor = Pyro4.Proxy(f"PYRONAME:Node.{self.succesor}")
-        with succesor.SuccLock:
-            succesor.predecesor = None
-
-            if self.predecesor:
-                predeccesor = Pyro4.Proxy(f"PYRONAME:Node.{self.predecesor}")
-                predeccesor.OutSuccessor()
-
-        self.alive = False
 
     def RunStabilize(self):
         while self.alive:
@@ -346,18 +379,10 @@ def process_loop(node):
             except KeyOutOfRange:
                 print('Key argument is out of range')
 
-        # elif command == 'exit':
-        #     node.Leave()
-        #     break
-
-        # elif command == 'join':
-        #     node.Join(uri = uriEntryPoint)
-
+    
         elif command == 'status':
             PrintStatus(node.Status)
 
-        # elif command == 'leave':
-        #     node.Leave()
 
         elif command == 'help':
             print('\nstatus\nlookup key\njoin\nhelp')
@@ -378,9 +403,6 @@ def init(daemon):
 
 
 def main(argv):
-
-    ownIP = socket.gethostbyname(socket.gethostname())
-
     while True:
         uri = input('Enter uri of node in chord if you want, if not press enter:\n')
         try:
@@ -406,7 +428,7 @@ def main(argv):
             else:
                 print('Wrong id!!')
                 
-    daemon = Pyro4.Daemon(ownIP)    
+    daemon = Pyro4.Daemon()    
     node = Node(id, daemon)
     node.Join(uri)
     
