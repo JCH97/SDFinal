@@ -1,10 +1,10 @@
 version: "3.2"
 
 services:
-  chord-node-1:
+  pyro-ns:
     image: jch/chord
-    container_name: chord-node-1
-    command: /bin/sh -c "echo 'export IP=10.0.0.2' >> ~/.bashrc && while sleep 1000; do :; done"
+    container_name: pyro-ns
+    command: /bin/sh -c "echo 'export IP=10.0.0.2' >> ~/.bashrc && pyro4-ns -n '10.0.0.2'"
     volumes:
       - .:/chord
     networks:
@@ -12,9 +12,9 @@ services:
         ipv4_address: 10.0.0.2
     expose:
       - 5000
-  chord-node-2:
+  chord-node-1:
     image: jch/chord
-    container_name: chord-node-2
+    container_name: chord-node-1
     command: /bin/sh -c "echo 'export IP=10.0.0.3' >> ~/.bashrc && while sleep 1000; do :; done"
     volumes:
       - .:/chord
@@ -23,9 +23,9 @@ services:
         ipv4_address: 10.0.0.3
     expose:
       - 5000
-  chord-node-3:
+  chord-node-2:
     image: jch/chord
-    container_name: chord-node-3
+    container_name: chord-node-2
     command: /bin/sh -c "echo 'export IP=10.0.0.4' >> ~/.bashrc && while sleep 1000; do :; done"
     volumes:
       - .:/chord
@@ -34,9 +34,9 @@ services:
         ipv4_address: 10.0.0.4
     expose:
       - 5000
-  chord-node-4:
+  chord-node-3:
     image: jch/chord
-    container_name: chord-node-4
+    container_name: chord-node-3
     command: /bin/sh -c "echo 'export IP=10.0.0.5' >> ~/.bashrc && while sleep 1000; do :; done"
     volumes:
       - .:/chord
@@ -45,9 +45,9 @@ services:
         ipv4_address: 10.0.0.5
     expose:
       - 5000
-  chord-node-5:
+  chord-node-4:
     image: jch/chord
-    container_name: chord-node-5
+    container_name: chord-node-4
     command: /bin/sh -c "echo 'export IP=10.0.0.6' >> ~/.bashrc && while sleep 1000; do :; done"
     volumes:
       - .:/chord
@@ -56,9 +56,9 @@ services:
         ipv4_address: 10.0.0.6
     expose:
       - 5000
-  chord-node-6:
+  chord-node-5:
     image: jch/chord
-    container_name: chord-node-6
+    container_name: chord-node-5
     command: /bin/sh -c "echo 'export IP=10.0.0.7' >> ~/.bashrc && while sleep 1000; do :; done"
     volumes:
       - .:/chord
@@ -67,9 +67,9 @@ services:
         ipv4_address: 10.0.0.7
     expose:
       - 5000
-  chord-node-7:
+  chord-node-6:
     image: jch/chord
-    container_name: chord-node-7
+    container_name: chord-node-6
     command: /bin/sh -c "echo 'export IP=10.0.0.8' >> ~/.bashrc && while sleep 1000; do :; done"
     volumes:
       - .:/chord
@@ -78,9 +78,9 @@ services:
         ipv4_address: 10.0.0.8
     expose:
       - 5000
-  chord-node-8:
+  chord-node-7:
     image: jch/chord
-    container_name: chord-node-8
+    container_name: chord-node-7
     command: /bin/sh -c "echo 'export IP=10.0.0.9' >> ~/.bashrc && while sleep 1000; do :; done"
     volumes:
       - .:/chord

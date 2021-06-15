@@ -1,5 +1,6 @@
 import random
 import Pyro4
+import socket
 import sys
 
 sys.excepthook = Pyro4.util.excepthook
@@ -40,6 +41,7 @@ class MediatorCh:
                     
                 except IndexError:
                     self.nodes.append(uriNode)
+                    print('OK...')
                     return ''
         else:
             return -1
@@ -50,14 +52,16 @@ class MediatorCh:
     
 
 if __name__ == "__main__":
-    m = 4
+    m = 5
     if len(sys.argv) > 1:
         m = int(sys.argv[1])
     
     mediator = MediatorCh(m)
+    ownIP = socket.gethostbyname(socket.gethostname())
     
-    with Pyro4.Daemon() as daemon:
+    with Pyro4.Daemon(ownIP) as daemon:
         mediator_uri = daemon.register(mediator)
+        print(mediator_uri)
 
         with Pyro4.locateNS() as ns:
             ns.register(f"Mediator", mediator_uri)

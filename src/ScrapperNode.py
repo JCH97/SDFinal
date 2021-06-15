@@ -1,8 +1,8 @@
-from http.client import HTTPConnection
+# from http.client import HTTPConnection
 import zmq
 import time
 import base64
-import urllib3
+# import urllib3
 import requests
 
 from threading import Thread
@@ -56,7 +56,7 @@ class ScrapperNode:
             # do some 'work'
             r = self.scrapp(url)
             print(r)
-            a = {'data':base64.b64encode(str(r).encode())}
+            a = {'data': r}
             socket.send_json(a)
 
     def scrapp(self, url):

@@ -21,15 +21,17 @@ class Client:
         old_std = sys.stdout
         while True:
             url, Html = self.resultQueue.get()
-            r = base64.b64decode(Html)
-            if r != b'-1':       
-                sys.stdout  = open('Html of '+ url[8:] + '.html', 'w') 
-                r = base64.b64decode(Html)
-                print(r)
-                sys.stdout = old_std
-            else:
-                print("There was an error trying to retrive de html")
-                print('')
+            print(Html)
+            # r = base64.b64decode(Html)
+            # print(r)
+            # if r != b'-1':       
+            #     sys.stdout  = open('Html of '+ url[8:] + '.html', 'w') 
+            #     r = base64.b64decode(Html)
+            #     print(r)
+            #     sys.stdout = old_std
+            # else:
+            #     print("There was an error trying to retrive de html")
+            #     print('')
 
     def Send(self):
         poller = zmq.Poller()

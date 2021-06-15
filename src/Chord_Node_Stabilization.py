@@ -8,7 +8,7 @@ import sched
 import time
 from collections import deque
 import base64
-
+import socket
 
 Pyro4.config.SERIALIZER = 'serpent'
 sys.excepthook = Pyro4.util.excepthook
@@ -174,7 +174,9 @@ class Node:
         if not uri:
             try:
                 mediator = Pyro4.Proxy(f"PYRONAME:Mediator")
+                print('1')
                 n_uri = mediator.GetUriNode(self.uri)
+                print('2')
                 if n_uri == '-1':
                     raise Exception('Node already en chord\n')
                 if n_uri != '':
@@ -300,7 +302,7 @@ class Node:
     
     def Save(self, url,html):
             print(f'Node {self._id} saving '+url)
-            self.urls[url] = base64.b64decode(html)
+            self.urls[url] = html
     
     def GetUrlsFromSuccesor(self):
         succ = Pyro4.Proxy(f"PYRONAME:Node.{self.succesor}")
@@ -376,6 +378,9 @@ def init(daemon):
 
 
 def main(argv):
+
+    ownIP = socket.gethostbyname(socket.gethostname())
+
     while True:
         uri = input('Enter uri of node in chord if you want, if not press enter:\n')
         try:
@@ -401,7 +406,7 @@ def main(argv):
             else:
                 print('Wrong id!!')
                 
-    daemon = Pyro4.Daemon()    
+    daemon = Pyro4.Daemon(ownIP)    
     node = Node(id, daemon)
     node.Join(uri)
     
