@@ -29,9 +29,13 @@ class Client:
             # print(r)
             url = url.replace('/', '')
             if Html != -1:       
-                sys.stdout  = open('Html of '+ url + '.html', 'w') 
+                # sys.stdout  = open('Html of '+ url + '.html', 'w')
+                with open("file.html", "w") as file:
+                    file.write(Html)
+                
                 print(Html)
-                sys.stdout = old_std
+
+                # sys.stdout = old_std
             else:
                 print("There was an error trying to retrive de html")
                 print('')

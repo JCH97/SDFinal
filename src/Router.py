@@ -6,12 +6,18 @@ import threading
 import zmq
 import sys
 import base64 
+import hashlib
+import const
 
-sys.excepthook = Pyro4.util.excepthook
+sys.excepthook = Pyro4.util.excepthook  
 
 class RouterNode:
-    def __init__(self,port):
+    def __init__(self, port):
         self.BuildConn(port)
+    
+    def getHash(self, key):
+        result = hashlib.sha1(key.encode())
+        return int(result.hexdigest(), 16) % const.MAX_NODES
     
     def BuildConn(self,port):
         """Server routine"""
@@ -49,7 +55,8 @@ class RouterNode:
         socket.connect(worker_url)
 
         socketForScraper = context.socket(zmq.REQ)
-        socketForScraper.connect(f"tcp://127.0.0.1:{9091}") #no se pueden poner puerto e ip fijos
+        socketForScraper.connect(f"tcp://10.0.0.3:9091") 
+        socketForScraper.connect(f"tcp://10.0.0.4:9091")
        
 
         poller = zmq.Poller()
@@ -82,7 +89,7 @@ class RouterNode:
                 
 
     def CheckInChord(self,url,socketForScraper):
-        hashedUrl = hash(url)
+        hashedUrl = self.getHash(url)
         # try:
         s = self.LookUrlInChord(hashedUrl,url) 
         return s
@@ -91,7 +98,7 @@ class RouterNode:
             
     def SaveInChord(self, url, html):
         try:
-            id = hash(url) % 2 ** 5
+            id = self.getHash(url)
             entry_point = self.FindEntryPoint() #Pyro4.Proxy(f"PYRONAME:Node.{8}")#aki hay q poner mas de uno por si falla
             if entry_point:
                 chord_node_id = entry_point.LookUp(id)
@@ -117,7 +124,7 @@ class RouterNode:
 
     def LookUrlInChord(self,hashedUrl,url):
         try:
-            id = hashedUrl % 2 ** 5
+            id = hashedUrl % const.MAX_NODES 
             print('nodo donde deberia estar ', id)
             entry_point = self.FindEntryPoint() #Pyro4.Proxy(f"PYRONAME:Node.{8}")#aki hay q poner mas de uno por si falla
             if entry_point:
@@ -138,8 +145,8 @@ class RouterNode:
 
 
 def main():
-    r = RouterNode(5555)
+    RouterNode(5555)
 
 if __name__ == '__main__':
-    main()#ver si hacen falata argumentos, como el puerto
+    main()
 

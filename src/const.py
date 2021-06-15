@@ -1,0 +1,2 @@
+BITS_KEY = 5
+MAX_NODES = (1 << BITS_KEY)

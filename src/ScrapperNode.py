@@ -1,14 +1,12 @@
-# from http.client import HTTPConnection
 import zmq
 import time
 import base64
-# import urllib3
 import requests
 
 from threading import Thread
 
 class ScrapperNode:
-    def __init__(self,ip='127.0.0.1', port = 9092):
+    def __init__(self, ip = '10.0.0.3', port = 9092):
         self.build(port,ip)
 
     def build(self, port,ip):
@@ -55,7 +53,7 @@ class ScrapperNode:
             
             # do some 'work'
             r = self.scrapp(url)
-            print(r)
+            # print(r)
             a = {'data': r}
             socket.send_json(a)
 
@@ -69,11 +67,13 @@ class ScrapperNode:
 
 
 if __name__ == '__main__':
-    ip =input("ip to connect to broker: ")
-    p=None
-    try:
-        p =int(input("Port to connect to broker: "))
-    except:
-        pass
+    # ip =input("ip to connect to broker: ")
+    # p=None
+    # try:
+    #     p = int(input("Port to connect to broker: "))
+    # except:
+    #     pass
 
-    ScrapperNode(ip,p)
+    # ScrapperNode(ip,p)
+    ScrapperNode(ip = '10.0.0.3')
+    ScrapperNode(ip = '10.0.0.4')

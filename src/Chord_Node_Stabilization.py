@@ -8,7 +8,9 @@ import sched
 import time
 from collections import deque
 import base64
-
+import socket
+import hashlib
+import const
 
 Pyro4.config.SERIALIZER = 'serpent'
 sys.excepthook = Pyro4.util.excepthook
@@ -31,7 +33,7 @@ class KeyOutOfRange(BaseException):
 @Pyro4.expose
 class Node:
     def __init__(self,id = None, Daemon = None):
-        self._bitsKey = 64
+        self._bitsKey = const.MAX_NODES
         self._id = id
         self._fingerTable = None
         self._successorList = deque(maxlen=4)
@@ -50,10 +52,10 @@ class Node:
             self.uri = Daemon.register(self)
             if id == None:
                 # self.fixKey()
-                self.key = hash(self.uri) % 2**self._bitsKey
+                self.key = self.getHash(self.uri)
 
-            if self.key<0 or self.key>2**self._bitsKey-1:
-                raise Exception(f"Node out of range, the id must be between [{0}, {2**self._bitsKey-1}]\n")
+            if self.key < 0 or self.key > 2 ** self._bitsKey - 1:
+                raise Exception(f"Node out of range, the id must be between [{0}, {2 ** self._bitsKey - 1}]\n")
 
             self._fingerTable = [None]*(self.bitsKey + 1)
 
@@ -131,11 +133,15 @@ class Node:
             self.predecesor if self.predecesor else None, self._successorList,\
                 self._fingerTable, self.alive
 
+    def getHash(self, key):
+        result = hashlib.sha1(key.encode())
+        return int(result.hexdigest(), 16) % const.MAX_NODES
+
     def IsAlive(self):
         return self.alive
 
     def Start(self, i):
-        return (self.key + 2**(i-1)) % 2**self._bitsKey
+        return (self.key + 2 ** (i - 1)) % 2 ** self._bitsKey
 
     def OutSuccessor(self):
         nodeout =  self._successorList.popleft()
@@ -145,7 +151,7 @@ class Node:
         self.previousSucc = nodeout
       
     def LookUp(self,key):
-        if key < 0 or key >= 2**self._bitsKey:
+        if key < 0 or key >= 2 ** self._bitsKey:
             print('key out of range')
             return
 
@@ -304,11 +310,11 @@ class Node:
 
     def RunStabilize(self):
         while self.alive:
-            self.ExecInBG(self.Stabilize, time.time()+5)
+            self.ExecInBG(self.Stabilize, time.time() + 5)
 
     def RunFixFt(self):
         while self.alive:
-            self.ExecInBG(self.Fix_Fingers, time.time()+9)
+            self.ExecInBG(self.Fix_Fingers, time.time() + 9)
 
     def ExecInBG(self,func,timeToWait):
         timeTask =  sched.scheduler(time.time,time.sleep)
@@ -322,7 +328,7 @@ class Node:
         if lwb <= upb:                                                            
             return lwb <= key and key < upb                                         
         else:                                                                     
-            return (lwb <= key and key < upb + 2**self._bitsKey) or (lwb <= key + 2**self._bitsKey and key < upb)   
+            return (lwb <= key and key < upb + 2 ** self._bitsKey) or (lwb <= key + 2 ** self._bitsKey and key < upb)   
 
     def GetUrl(self, url):
         try:
@@ -344,7 +350,8 @@ class Node:
         print('')
         print(f'URLS de mi successor -> {succ_dict.keys()}')
         for k in succ_dict_copy:
-            if hash(k)<=self.key:
+            print(f'k: {k}, hash(k): {self.getHash(k)}, self.key: {self.key}')
+            if self.getHash(k) <= self.key:
                 self.urls[k]= succ_dict_copy[k]
                 del succ_dict[k]#si no sirve pasarle un nuevo dict con los cambios
         
@@ -427,8 +434,10 @@ def main(argv):
                 break
             else:
                 print('Wrong id!!')
-                
-    daemon = Pyro4.Daemon()    
+    
+    ownIP = socket.gethostbyname(socket.gethostname())
+
+    daemon = Pyro4.Daemon(ownIP)    
     node = Node(id, daemon)
     node.Join(uri)
     
