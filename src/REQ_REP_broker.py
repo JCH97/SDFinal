@@ -21,16 +21,16 @@ class Broker():
         context.term()
 
 def main():
-    p1,p2=None,None
-    try:
-        p1 = int(input('Port to bind to clients: '))
-    except:
-        pass
-    print('')
-    try:
-        p2 = int(input('Port to bind to scrapers: '))
-    except:
-        pass
+    # p1,p2=None,None
+    # try:
+    #     p1 = int(input('Port to bind to clients: '))
+    # except:
+    #     pass
+    # print('')
+    # try:
+    #     p2 = int(input('Port to bind to scrapers: '))
+    # except:
+    #     pass
 
     r = Broker(p1,p2)
 

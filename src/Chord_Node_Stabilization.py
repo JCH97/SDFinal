@@ -31,7 +31,7 @@ class KeyOutOfRange(BaseException):
 @Pyro4.expose
 class Node:
     def __init__(self,id = None, Daemon = None):
-        self._bitsKey = 64
+        self._bitsKey = 5
         self._id = id
         self._fingerTable = None
         self._successorList = deque(maxlen=4)
@@ -344,7 +344,7 @@ class Node:
         print('')
         print(f'URLS de mi successor -> {succ_dict.keys()}')
         for k in succ_dict_copy:
-            if hash(k)<=self.key:
+            if hash(k)%2**self.bitsKey<=self.key:
                 self.urls[k]= succ_dict_copy[k]
                 del succ_dict[k]#si no sirve pasarle un nuevo dict con los cambios
         

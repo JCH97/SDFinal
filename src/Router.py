@@ -32,7 +32,7 @@ class RouterNode:
 
         # Launch pool of worker threads
         for i in range(5):
-            threading.Thread(target=self.worker_routine, args=(url_worker,), daemon = True).start()
+            threading.Thread(name=f'hilo-{i}', target=self.worker_routine, args=(url_worker,), daemon = True).start()
 
         zmq.proxy(clients, workers)
 
@@ -58,6 +58,7 @@ class RouterNode:
         while True:
             url  = socket.recv_string()
             print("Received request: [ %s ]" % (url))
+            print(threading.current_thread().getName())
             
             r = self.CheckInChord(url,socketForScraper)
             if not r:
@@ -66,14 +67,17 @@ class RouterNode:
                 socks = dict(poller.poll(4000))
                 if socks:
                     if socks.get(socketForScraper) == zmq.POLLIN:
-                        r = socketForScraper.recv_json(zmq.NOBLOCK)
-                        socket.send_json(r)
+                        r = socketForScraper.recv(zmq.NOBLOCK)
+                        # print(r['data'])
+                        data = r.decode()
+                        
+                        socket.send_json({'data':data})
                         # result = r['data']
 
-                        if r['data'] != -1:
-                            self.SaveInChord(url, r['data'])
+                        if data != '-1':
+                            self.SaveInChord(url, data)
                 else:
-                    socket.send_json({'data': -1})
+                    socket.send_json({'data': '-1'})
                 
             else:
                 # decoded = base64.b64decode(r['data'])
@@ -92,7 +96,7 @@ class RouterNode:
     def SaveInChord(self, url, html):
         try:
             id = hash(url) % 2 ** 5
-            entry_point = self.FindEntryPoint() #Pyro4.Proxy(f"PYRONAME:Node.{8}")#aki hay q poner mas de uno por si falla
+            entry_point = self.FindEntryPoint() 
             if entry_point:
                 chord_node_id = entry_point.LookUp(id)
                 chord_node_with_html = Pyro4.Proxy(f"PYRONAME:Node.{chord_node_id}")
