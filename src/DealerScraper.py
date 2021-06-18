@@ -1,7 +1,5 @@
-from __future__ import print_function
-import time
-import base64
 # from http.client import HTTPConnection
+from __future__ import print_function
 import threading
 import time
 import zmq
@@ -11,12 +9,30 @@ import requests
 from threading import Thread
 
 class ScrapperNode:
-    def __init__(self, ip = '10.0.0.3', port = 9092):
+    def __init__(self,ip='127.0.0.1', port = 9091):
         self.build(port,ip)
 
     def build(self, port,ip):
         """Server routine"""
         NBR_WORKERS = 1
+        # url_worker = "inproc://workers"
+        # url_client = f"tcp://*:{port}"
+
+        # # Prepare our context and sockets
+        # context = zmq.Context.instance()
+
+        # # Socket to talk to clients
+        # frontend = context.socket(zmq.ROUTER)
+        # # clients.connect(f"tcp://{ip}:%s" % port)
+        # frontend.bind(url_client)
+
+        # # Socket to talk to workers
+        # backend = context.socket(zmq.ROUTER)
+        # backend.bind(url_worker)
+
+        # Launch pool of worker threads
+        # for i in range(5):
+        #     Thread(target = self.worker_routine, args=(url_worker,), daemon = True).start()
 
         url_worker = "inproc://workers"
         url_client = f"tcp://*:{port}"
@@ -24,11 +40,9 @@ class ScrapperNode:
 
         # Prepare our context and sockets
         context = zmq.Context()
-        
         frontend = context.socket(zmq.ROUTER)
         frontend.bind(url_client)
-
-        backend = context.socket(zmq.ROUTER)
+        backend = context.socket(zmq.DEALER)
         backend.bind(url_worker)
 
         # create workers and clients threads
@@ -36,6 +50,11 @@ class ScrapperNode:
             thread = threading.Thread(target=self.worker_thread,
                                     args=(url_worker, context, i, ))
             thread.start()
+
+        # for i in range(NBR_CLIENTS):
+        #     thread_c = threading.Thread(target=client_thread,
+        #                                 args=(url_client, context, i, ))
+        #     thread_c.start()
 
         # Logic of LRU loop
         # - Poll backend always, frontend only if 1+ worker ready
@@ -74,20 +93,20 @@ class ScrapperNode:
                 workers_list.append(worker_addr)
 
                 #   Second frame is empty
-                empty = message[1]
-                assert empty == b""
+                # empty = message[0]
+                # assert empty == b""
 
                 # Third frame is READY or else a client reply address
-                client_addr = message[2]
+                response = message[2]
 
                 # If client reply, send rest back to frontend
-                if client_addr != b'READY':
-
+                if response != b'READY':
+                    client_addr = message[0]
                     # Following frame is empty
-                    empty = message[3]
+                    empty = message[1]
                     assert empty == b""
 
-                    reply = message[4]
+                    reply = message[2]
 
                     frontend.send_multipart([client_addr, b"", reply])
 
@@ -111,8 +130,8 @@ class ScrapperNode:
                     available_workers += -1
                     worker_id = workers_list.pop()
 
-                    backend.send_multipart([worker_id, b"",
-                                            client_addr, b"", request])
+                    backend.send_multipart([worker_id,
+                                            client_addr, request])
 
         #out of infinite loop: do some housekeeping
         time.sleep(1)
@@ -122,7 +141,6 @@ class ScrapperNode:
         context.term()
 
 
-
 # if __name__ == "__main__":
 #     main()
 
@@ -130,7 +148,7 @@ class ScrapperNode:
     def worker_thread(self,worker_url, context, i):
         """ Worker using REQ socket to do LRU routing """
 
-        socket = context.socket(zmq.REQ)
+        socket = context.socket(zmq.DEALER)
 
         # set worker identity
         socket.identity = (u"Worker-%d" % (i)).encode('ascii')
@@ -138,18 +156,17 @@ class ScrapperNode:
         socket.connect(worker_url)
 
         # Tell the broker we are ready for work
-        socket.send(b"READY")
+        socket.send_multipart([socket.identity,b'',b"READY"])
 
         try:
             while True:
                 # a = socket.recv_multipart()
-                address, empty, request = socket.recv_multipart()
+                _, address, request = socket.recv_multipart()
 
                 url = request.decode('ascii')
 
                 print("%s: %s\n" % (socket.identity.decode('ascii'),
-                                request.decode('ascii')), end='')
-
+                                url ), end='')
 
                 r = self.scrapp(url)
 
@@ -189,14 +206,4 @@ class ScrapperNode:
 
 
 if __name__ == '__main__':
-    # ip =input("ip to connect to broker: ")
-    # p=None
-    # try:
-    #     p = int(input("Port to connect to broker: "))
-    # except:
-    #     pass
-
-    # ScrapperNode(ip,p)
-    ScrapperNode(ip = '10.0.0.3')
-    ScrapperNode(ip = '10.0.0.4')
-    # ScrapperNode()
+    ScrapperNode()
