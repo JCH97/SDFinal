@@ -6,14 +6,15 @@ page = requests.get(baseURL)
 
 soup = BeautifulSoup(page.content, 'html.parser')
 
-urls = []
+urlsTemp = []
 for link in soup.find_all('a'):
     href: str = link.get('href')
     if href.startswith(baseURL):
-        urls.append(href)
+        urlsTemp.append(href)
 
-uniqueURLs = set(urls)
+# con esto tienes una lista de las urls
+# urls = set(urlsTemp)
 
-for u in uniqueURLs:
+for u in set(urlsTemp):
     #scrapp u
     print(u)
