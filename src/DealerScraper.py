@@ -5,6 +5,7 @@ import zmq
 from queue import Queue
 import requests
 
+from bs4 import BeautifulSoup
 from threading import Thread
 
 class ScrapperNode:
@@ -95,13 +96,20 @@ class ScrapperNode:
                     # Client request is [address][empty][request]
 
                     [broker_addr,client_addr ,request] = frontend.recv_multipart()
+
+                    baseURL = request.decode()
+                    page = requests.get(baseURL)
+
+                    soup = BeautifulSoup(page.content, 'html.parser')
+
+                    urls = []
+                    for link in soup.find_all('a'):
+                        href: str = link.get('href')
+                        if href.startswith(baseURL):
+                            urls.append(href)
                     
-                    ############################
-                    #Me hace falta aki la lista con las urls scrapeadas#
-                    #                          #
-                    #                          #
-                    #                          #
-                    ############################
+                    #### papa aqui urls es la lista
+
                     #  Dequeue and drop the next worker address
                     
                     for url in self.myurls:

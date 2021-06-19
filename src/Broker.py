@@ -2,7 +2,7 @@ import zmq
 
 class Broker():
     # Prepare our context and sockets
-    def __init__(self,port_for_clients = 9091 ,port_for_scrapers = 9092 ):
+    def __init__(self, port_for_clients = 9091, port_for_scrapers = 9092 ):
         self.port_for_clients = port_for_clients
         self.port_for_scrapers = port_for_scrapers
         self.bind()
@@ -34,7 +34,8 @@ def main():
     # except:
     #     pass
 
-    r = Broker()
+    # r = Broker(p1, p2)
+    Broker()
 
 if __name__ == '__main__':
     main()#ver si hacen falata argumentos, como el puerto

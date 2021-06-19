@@ -4,91 +4,168 @@ services:
   pyro-ns:
     image: jch/chord
     container_name: pyro-ns
+    restart: unless-stopped
     command: /bin/sh -c "echo 'export IP=10.0.0.2' >> ~/.bashrc && pyro4-ns -n '10.0.0.2'"
     volumes:
       - .:/chord
     networks:
       default:
         ipv4_address: 10.0.0.2
-    expose:
-      - 5000
-  chord-node-1:
+
+  broker-1:
     image: jch/chord
-    container_name: chord-node-1
-    command: /bin/sh -c "echo 'export IP=10.0.0.3' >> ~/.bashrc && while sleep 1000; do :; done"
+    container_name: broker-1
+    restart: unless-stopped
+    command: /bin/sh -c "python src/REQ_REP_broker.py"
     volumes:
       - .:/chord
     networks:
       default:
         ipv4_address: 10.0.0.3
     expose:
-      - 5000
-  chord-node-2:
+      - 9091
+      - 9092
+
+  broker-2:
     image: jch/chord
-    container_name: chord-node-2
-    command: /bin/sh -c "echo 'export IP=10.0.0.4' >> ~/.bashrc && while sleep 1000; do :; done"
+    container_name: broker-2
+    restart: unless-stopped
+    command: /bin/sh -c "python src/REQ_REP_broker.py"
     volumes:
       - .:/chord
     networks:
       default:
         ipv4_address: 10.0.0.4
     expose:
-      - 5000
-  chord-node-3:
+      - 9091
+      - 9092
+
+  scrapper-1:
     image: jch/chord
-    container_name: chord-node-3
-    command: /bin/sh -c "echo 'export IP=10.0.0.5' >> ~/.bashrc && while sleep 1000; do :; done"
+    container_name: scrapper-1
+    restart: unless-stopped
+    command: /bin/sh -c "python src/ScrapperNode.py"
     volumes:
       - .:/chord
     networks:
       default:
         ipv4_address: 10.0.0.5
     expose:
-      - 5000
-  chord-node-4:
+      - 9092
+
+  scrapper-2:
     image: jch/chord
-    container_name: chord-node-4
-    command: /bin/sh -c "echo 'export IP=10.0.0.6' >> ~/.bashrc && while sleep 1000; do :; done"
+    container_name: scrapper-2
+    restart: unless-stopped
+    command: /bin/sh -c "python src/ScrapperNode.py"
     volumes:
       - .:/chord
     networks:
       default:
         ipv4_address: 10.0.0.6
     expose:
-      - 5000
+      - 9092
+
+  chord-node-1:
+    image: jch/chord
+    container_name: chord-node-1
+    command: /bin/sh -c "echo 'export IP=10.0.0.10' >> ~/.bashrc && while sleep 1000; do :; done"
+    volumes:
+      - .:/chord
+    networks:
+      default:
+        ipv4_address: 10.0.0.10
+
+  chord-node-2:
+    image: jch/chord
+    container_name: chord-node-2
+    command: /bin/sh -c "echo 'export IP=10.0.0.11' >> ~/.bashrc && while sleep 1000; do :; done"
+    volumes:
+      - .:/chord
+    networks:
+      default:
+        ipv4_address: 10.0.0.11
+
+  chord-node-3:
+    image: jch/chord
+    container_name: chord-node-3
+    command: /bin/sh -c "echo 'export IP=10.0.0.12' >> ~/.bashrc && while sleep 1000; do :; done"
+    volumes:
+      - .:/chord
+    networks:
+      default:
+        ipv4_address: 10.0.0.12
+
+  chord-node-4:
+    image: jch/chord
+    container_name: chord-node-4
+    command: /bin/sh -c "echo 'export IP=10.0.0.13' >> ~/.bashrc && while sleep 1000; do :; done"
+    volumes:
+      - .:/chord
+    networks:
+      default:
+        ipv4_address: 10.0.0.13
+
   chord-node-5:
     image: jch/chord
     container_name: chord-node-5
-    command: /bin/sh -c "echo 'export IP=10.0.0.7' >> ~/.bashrc && while sleep 1000; do :; done"
+    command: /bin/sh -c "echo 'export IP=10.0.0.14' >> ~/.bashrc && while sleep 1000; do :; done"
     volumes:
       - .:/chord
     networks:
       default:
-        ipv4_address: 10.0.0.7
-    expose:
-      - 5000
+        ipv4_address: 10.0.0.14
+
   chord-node-6:
     image: jch/chord
     container_name: chord-node-6
-    command: /bin/sh -c "echo 'export IP=10.0.0.8' >> ~/.bashrc && while sleep 1000; do :; done"
+    command: /bin/sh -c "echo 'export IP=10.0.0.15' >> ~/.bashrc && while sleep 1000; do :; done"
     volumes:
       - .:/chord
     networks:
       default:
-        ipv4_address: 10.0.0.8
+        ipv4_address: 10.0.0.15
     expose:
       - 5000
   chord-node-7:
     image: jch/chord
     container_name: chord-node-7
-    command: /bin/sh -c "echo 'export IP=10.0.0.9' >> ~/.bashrc && while sleep 1000; do :; done"
+    command: /bin/sh -c "echo 'export IP=10.0.0.16' >> ~/.bashrc && while sleep 1000; do :; done"
     volumes:
       - .:/chord
     networks:
       default:
-        ipv4_address: 10.0.0.9
-    expose:
-      - 5000
+        ipv4_address: 10.0.0.16
+
+  chord-node-8:
+    image: jch/chord
+    container_name: chord-node-8
+    command: /bin/sh -c "echo 'export IP=10.0.0.17' >> ~/.bashrc && while sleep 1000; do :; done"
+    volumes:
+      - .:/chord
+    networks:
+      default:
+        ipv4_address: 10.0.0.17
+
+  chord-node-9:
+    image: jch/chord
+    container_name: chord-node-9
+    command: /bin/sh -c "echo 'export IP=10.0.0.18' >> ~/.bashrc && while sleep 1000; do :; done"
+    volumes:
+      - .:/chord
+    networks:
+      default:
+        ipv4_address: 10.0.0.18
+
+  chord-node-10:
+    image: jch/chord
+    container_name: chord-node-10
+    command: /bin/sh -c "echo 'export IP=10.0.0.19' >> ~/.bashrc && while sleep 1000; do :; done"
+    volumes:
+      - .:/chord
+    networks:
+      default:
+        ipv4_address: 10.0.0.19
 
 networks:
   default:

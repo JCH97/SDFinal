@@ -6,19 +6,25 @@ import threading
 import zmq
 import sys
 import base64 
+import hashlib
+import const
 
-sys.excepthook = Pyro4.util.excepthook
-
-
+sys.excepthook = Pyro4.util.excepthook  
+    
 def tprint(msg):
     """like print, but won't get newlines confused with multiple threads"""
     sys.stdout.write(msg + '\n')
     sys.stdout.flush()
 
+def getHash(key):
+    result = hashlib.sha1(key.encode())
+    return int(result.hexdigest(), 16) % const.MAX_NODES
+
 class ServerTask(threading.Thread):
     """ServerTask"""
     def __init__(self):
         threading.Thread.__init__ (self)
+
 
     def run(self):
         context = zmq.Context()
@@ -91,15 +97,16 @@ class ServerWorker(threading.Thread):
 
 
     def CheckInChord(self,url,socketForScraper):
-        hashedUrl = hash(url)
+        hashedUrl = getHash(url)
+        # try:
         return self.LookUrlInChord(hashedUrl,url) 
-        
-      
+        # except :
+        #     print("Error")
             
     def SaveInChord(self, url, html):
         try:
-            id = hash(url) % 2 ** 5
-            entry_point = self.FindEntryPoint() 
+            id = getHash(url)
+            entry_point = self.FindEntryPoint() #Pyro4.Proxy(f"PYRONAME:Node.{8}")#aki hay q poner mas de uno por si falla
             if entry_point:
                 chord_node_id = entry_point.LookUp(id)
                 chord_node_with_html = Pyro4.Proxy(f"PYRONAME:Node.{chord_node_id}")
@@ -124,7 +131,7 @@ class ServerWorker(threading.Thread):
 
     def LookUrlInChord(self,hashedUrl,url):
         try:
-            id = hashedUrl % 2 ** 5
+            id = hashedUrl % const.MAX_NODES 
             print('nodo donde deberia estar ', id)
             entry_point = self.FindEntryPoint() 
             if entry_point:
@@ -152,5 +159,5 @@ def main():
     server.join()
 
 if __name__ == '__main__':
-    main()#ver si hacen falata argumentos, como el puerto
+    main()
 
