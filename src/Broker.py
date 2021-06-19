@@ -13,6 +13,8 @@ class Broker():
         backend = context.socket(zmq.DEALER)
         frontend.bind(f"tcp://*:{self.port_for_clients}")
         backend.bind(f"tcp://*:{self.port_for_scrapers}")
+
+        backend.setsockopt(zmq.IDENTITY, b'A')
         zmq.proxy(frontend, backend)
 
         # We never get here...
@@ -32,7 +34,7 @@ def main():
     # except:
     #     pass
 
-    r = Broker(p1,p2)
+    r = Broker()
 
 if __name__ == '__main__':
     main()#ver si hacen falata argumentos, como el puerto

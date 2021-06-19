@@ -9,89 +9,92 @@ import base64
 
 sys.excepthook = Pyro4.util.excepthook
 
-class RouterNode:
-    def __init__(self,port):
-        self.BuildConn(port)
-    
-    def BuildConn(self,port):
-        """Server routine"""
 
-        url_worker = "inproc://workers"
-        url_client = f"tcp://*:{port}"
+def tprint(msg):
+    """like print, but won't get newlines confused with multiple threads"""
+    sys.stdout.write(msg + '\n')
+    sys.stdout.flush()
 
-        # Prepare our context and sockets
-        context = zmq.Context.instance()
+class ServerTask(threading.Thread):
+    """ServerTask"""
+    def __init__(self):
+        threading.Thread.__init__ (self)
 
-        # Socket to talk to clients
-        clients = context.socket(zmq.ROUTER)
-        clients.bind(url_client)
+    def run(self):
+        context = zmq.Context()
+        frontend = context.socket(zmq.ROUTER)
+        frontend.bind('tcp://*:5555')
 
-        # Socket to talk to workers
-        workers = context.socket(zmq.DEALER)
-        workers.bind(url_worker)
+        backend = context.socket(zmq.DEALER)
+        backend.bind('inproc://backend')
 
-        # Launch pool of worker threads
+        workers = []
         for i in range(5):
-            threading.Thread(name=f'hilo-{i}', target=self.worker_routine, args=(url_worker,), daemon = True).start()
+            worker = ServerWorker(context)
+            worker.start()
+            workers.append(worker)
 
-        zmq.proxy(clients, workers)
+        zmq.proxy(frontend, backend)
 
-        # We never get here but clean up anyhow
-        clients.close()
-        workers.close()
+        frontend.close()
+        backend.close()
         context.term()
 
-    def worker_routine(self, worker_url, context = None):
-        """Worker routine"""
-        context = context or zmq.Context.instance()
-        # Socket to talk to dispatcher
-        socket = context.socket(zmq.REP)
-        socket.connect(worker_url)
+class ServerWorker(threading.Thread):
+    """ServerWorker"""
+    def __init__(self, context):
+        threading.Thread.__init__ (self)
+        self.context = context
 
-        socketForScraper = context.socket(zmq.REQ)
+    def run(self):
+        worker = self.context.socket(zmq.DEALER)
+        worker.connect('inproc://backend')
+        tprint('Worker started')
+
+        context = zmq.Context.instance()
+        socketForScraper = context.socket(zmq.DEALER)
         socketForScraper.connect(f"tcp://127.0.0.1:{9091}") #no se pueden poner puerto e ip fijos
        
 
         poller = zmq.Poller()
         poller.register(socketForScraper, zmq.POLLIN)
+        poller.register(worker, zmq.POLLIN)
+        r = None
+        url = None
+        ident = None
 
         while True:
-            url  = socket.recv_string()
-            print("Received request: [ %s ]" % (url))
-            print(threading.current_thread().getName())
-            
-            r = self.CheckInChord(url,socketForScraper)
-            if not r:
-                socketForScraper.send_string(url)
-
-                socks = dict(poller.poll(4000))
-                if socks:
-                    if socks.get(socketForScraper) == zmq.POLLIN:
-                        r = socketForScraper.recv(zmq.NOBLOCK)
-                        # print(r['data'])
-                        data = r.decode()
-                        
-                        socket.send_json({'data':data})
-                        # result = r['data']
-
-                        if data != '-1':
-                            self.SaveInChord(url, data)
+            socks = dict(poller.poll(4000))
+            if (worker in socks and socks[worker] == zmq.POLLIN):
+                ident, url = worker.recv_multipart(zmq.NOBLOCK)
+                r = self.CheckInChord(url,socketForScraper)
+                if not r:
+                    socketForScraper.send(url)
                 else:
-                    socket.send_json({'data': '-1'})
-                
-            else:
-                # decoded = base64.b64decode(r['data'])
+                    worker.send_multipart([ident,url,r.encode()])
 
-                socket.send_json({'data':r})
+            if (socketForScraper in socks and socks[socketForScraper] == zmq.POLLIN):
+                r1,r2 = socketForScraper.recv_multipart(zmq.NOBLOCK)
+                tprint('Worker received %s from scraper' % r1)
+                url = r1.decode()
+                data = r2.decode()
                 
+                worker.send_multipart([ident,r1,r2])
+               
+
+                if data != '-1':
+                    self.SaveInChord(url, data)
+             
+            #     time.sleep(1. / (randint(1,10)))
+           
+        worker.close()
+
 
     def CheckInChord(self,url,socketForScraper):
         hashedUrl = hash(url)
-        # try:
-        s = self.LookUrlInChord(hashedUrl,url) 
-        return s
-        # except :
-        #     print("Error")
+        return self.LookUrlInChord(hashedUrl,url) 
+        
+      
             
     def SaveInChord(self, url, html):
         try:
@@ -123,13 +126,13 @@ class RouterNode:
         try:
             id = hashedUrl % 2 ** 5
             print('nodo donde deberia estar ', id)
-            entry_point = self.FindEntryPoint() #Pyro4.Proxy(f"PYRONAME:Node.{8}")#aki hay q poner mas de uno por si falla
+            entry_point = self.FindEntryPoint() 
             if entry_point:
                 chord_node_id = entry_point.LookUp(id)
                 print('nodo en el que voy a buscar', chord_node_id)
 
                 chord_node_with_html = Pyro4.Proxy(f"PYRONAME:Node.{chord_node_id}")
-                c = chord_node_with_html.GetUrl(url)
+                c = chord_node_with_html.GetUrl(url.decode())
                 return c
             else:
                 return None
@@ -141,8 +144,12 @@ class RouterNode:
             pass
 
 
+
 def main():
-    r = RouterNode(5555)
+   
+    server = ServerTask()
+    server.start()
+    server.join()
 
 if __name__ == '__main__':
     main()#ver si hacen falata argumentos, como el puerto
