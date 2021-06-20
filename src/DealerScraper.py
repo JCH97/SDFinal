@@ -38,15 +38,12 @@ class ScrapperNode:
             thread.start()
 
 
-        # Logic of LRU loop
+        # Logic of FIFo loop
         # - Poll backend always, frontend only if 1+ worker ready
         # - If worker replies, queue worker as ready and forward reply
         # to client if necessary
         # - If client requests, pop next worker and send request to it
-
-        # Queue of available workers
-        # available_workers = 0
-        # workers_list = []
+       
 
         # init poller
         poller = zmq.Poller()
@@ -73,8 +70,10 @@ class ScrapperNode:
 
                 # add worker back to the list of workers
                 self.available_workers += 1
-                # workers_list.append(worker_addr)
-                self.workers_queue.put(worker_addr)
+
+                # quitar el with si da palo
+                with threading.Lock():
+                    self.workers_queue.put(worker_addr)
 
                 # Third frame is READY or else a client reply address
                 response1 = message[3]
@@ -122,7 +121,7 @@ class ScrapperNode:
 
                         not_repeted_urls = []
                         for u in set(urls):
-                            not_repeted_urls.append(u)
+                            not_repeted_urls.append(baseURL + u)
                         
                         encoded_urls=[]
                         for u in not_repeted_urls:
@@ -137,14 +136,6 @@ class ScrapperNode:
                                  broker_addr,client_addr,],daemon=True)
 
                         t1.start()
-                    #  Dequeue and drop the next worker address
-                    
-                    # for url in not_repeted_urls:
-                    #     self.available_workers += -1
-                    #     worker_id = self.workers_queue.get() 
-                    #     scraped_url = baseURL + url
-                    #     backend.send_multipart([worker_id,
-                    #                         broker_addr, client_addr, scraped_url.encode()])
                     
 
         #out of infinite loop: do some housekeeping
@@ -158,9 +149,9 @@ class ScrapperNode:
         for url in not_repeted_urls:
                         self.available_workers += -1
                         worker_id = self.workers_queue.get() 
-                        scraped_url = baseURL + url
+                        # scraped_url = baseURL + url
                         backend.send_multipart([worker_id,
-                                            broker_addr, client_addr, scraped_url.encode()])
+                                            broker_addr, client_addr, url.encode()])
 
     def worker_thread(self,worker_url, context, i):
         """ Worker using DEALER socket to do LRU routing """
