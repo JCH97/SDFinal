@@ -73,13 +73,24 @@ class ServerWorker(threading.Thread):
             socks = dict(poller.poll(4000))
             if (worker in socks and socks[worker] == zmq.POLLIN):
                 ident, url = worker.recv_multipart(zmq.NOBLOCK)
-                r = list(filter(lambda x: x!= None, self.CheckInChord(url.decode()))) 
+                 
+                r = list(filter(lambda x: x!= None,self.CheckInChord(url.decode()) )) 
+
                 if len(r) == 0:
                     socketForScraper.send(url)
                 else:
                     #si la lista de scraped_urls esta vacia scrapear esa url
                     for u,html in r:
                         worker.send_multipart([ident,u.encode(),html.encode()])
+
+                    #si llega un solo valor es q ella fue scrapeada y 
+                    # ahora hay q scrapear su html
+                    if len(r) == 1:
+                        url,_= r[0]
+                        socketForScraper.send(url)
+                        
+
+
 
             if (socketForScraper in socks and socks[socketForScraper] == zmq.POLLIN):
                 #aki se recibe url,html,urls_scraped
@@ -120,7 +131,8 @@ class ServerWorker(threading.Thread):
 
         if scraped_urls:
             for u in scraped_urls:
-                self.CheckInChord(u)
+                for s in self.CheckInChord(u):
+                    yield s 
 
        
     def SaveInChord(self, url, html,scraped_urls):
@@ -160,6 +172,7 @@ class ServerWorker(threading.Thread):
 
                 chord_node_with_html = Pyro4.Proxy(f"PYRONAME:Node.{chord_node_id}")
                 html,hashed_scraped_urls = chord_node_with_html.GetUrl(url)
+                print(chord_node_with_html.GetUrls.keys())
                 return (html,hashed_scraped_urls)
                 
                 # return c
