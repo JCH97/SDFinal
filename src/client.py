@@ -4,6 +4,8 @@ from queue import Queue
 import base64 
 import sys
 import time
+import re
+import os
 
 class Client:
     def __init__(self, ip, port):
@@ -42,11 +44,14 @@ class Client:
                     if socks:
                         if socks.get(self.socket) == zmq.POLLIN:
                             result = self.socket.recv_multipart()
-                            url = result[0].decode().replace('/', '')
+                            url = result[0].decode().replace('/', '').replace(':', '.')
                             Html = result[1].decode()
 
+                            pattern = re.compile('[^a-zA-Z0-9]')
+                            file = re.sub(pattern, '.', url)
+
                             if Html != '-1':   
-                                with open('Html of '+ url + '.html', 'w') as file:
+                                with open(f'{os.getcwd()}/{file}.html', 'w') as file:
                                     file.write(Html)
                             else:
                                 print("There was an error trying to retrive de html")
@@ -63,7 +68,7 @@ class Client:
 def main():
     # ip = str(input('ip to connect to: '))
     port = 5555
-    c = Client('127.0.0.1', port)
+    c = Client('10.0.0.11', port)
     t1 = threading.Thread(target=c.Send,daemon=True)
     t2 = threading.Thread(target=c.Recv)
     t1.start()

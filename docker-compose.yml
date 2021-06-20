@@ -16,7 +16,7 @@ services:
     image: jch/chord
     container_name: broker-1
     restart: unless-stopped
-    command: /bin/sh -c "python src/REQ_REP_broker.py"
+    command: /bin/sh -c "python src/Broker.py"
     volumes:
       - .:/chord
     networks:
@@ -26,45 +26,45 @@ services:
       - 9091
       - 9092
 
-  broker-2:
-    image: jch/chord
-    container_name: broker-2
-    restart: unless-stopped
-    command: /bin/sh -c "python src/REQ_REP_broker.py"
-    volumes:
-      - .:/chord
-    networks:
-      default:
-        ipv4_address: 10.0.0.4
-    expose:
-      - 9091
-      - 9092
+  # broker-2:
+  #   image: jch/chord
+  #   container_name: broker-2
+  #   restart: unless-stopped
+  #   command: /bin/sh -c "python src/Broker.py"
+  #   volumes:
+  #     - .:/chord
+  #   networks:
+  #     default:
+  #       ipv4_address: 10.0.0.4
+  #   expose:
+  #     - 9091
+  #     - 9092
 
-  scrapper-1:
-    image: jch/chord
-    container_name: scrapper-1
-    restart: unless-stopped
-    command: /bin/sh -c "python src/ScrapperNode.py"
-    volumes:
-      - .:/chord
-    networks:
-      default:
-        ipv4_address: 10.0.0.5
-    expose:
-      - 9092
+  # dealer:
+  #   image: jch/chord
+  #   container_name: dealer
+  #   restart: unless-stopped
+  #   command: /bin/sh -c "python src/DealerScraper.py"
+  #   volumes:
+  #     - .:/chord
+  #   networks:
+  #     default:
+  #       ipv4_address: 10.0.0.5
+  #   expose:
+  #     - 9092
 
-  scrapper-2:
-    image: jch/chord
-    container_name: scrapper-2
-    restart: unless-stopped
-    command: /bin/sh -c "python src/ScrapperNode.py"
-    volumes:
-      - .:/chord
-    networks:
-      default:
-        ipv4_address: 10.0.0.6
-    expose:
-      - 9092
+  # scrapper-2:
+  #   image: jch/chord
+  #   container_name: scrapper-2
+  #   restart: unless-stopped
+  #   command: /bin/sh -c "python src/ScrapperNode.py"
+  #   volumes:
+  #     - .:/chord
+  #   networks:
+  #     default:
+  #       ipv4_address: 10.0.0.6
+  #   expose:
+  #     - 9092
 
   chord-node-1:
     image: jch/chord

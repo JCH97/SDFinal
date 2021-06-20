@@ -10,8 +10,7 @@ from bs4 import BeautifulSoup
 from threading import Thread
 
 class ScrapperNode:
-    def __init__(self,ip='127.0.0.1', port = 9092):
-        self.myurls = [b'https://google.com',b'https://example.com',b'https://facebook.com']
+    def __init__(self, ip = '10.0.0.3', port = 9092):
         self.workers_queue = Queue()
         self.available_workers = 0
         self.build(port,ip)

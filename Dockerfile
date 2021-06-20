@@ -8,4 +8,6 @@ RUN pip install pyzmq
 
 RUN pip install requests
 
+RUN pip install beautifulsoup4
+
 WORKDIR /chord
