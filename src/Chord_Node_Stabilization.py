@@ -337,11 +337,14 @@ class Node:
             return r
         except KeyError:
             print(f'Node {self._id} todavia no tiene '+url)
-            return None
+            return None,None
     
-    def Save(self, url,html):
+    def Save(self, url,html,hashed_scraped_urls):
+        try:
+            self.urls[url]
+        except KeyError:
             print(f'Node {self._id} saving '+url)
-            self.urls[url] = html
+            self.urls[url] = (html,hashed_scraped_urls)
     
     def GetUrlsFromSuccesor(self):
         succ = Pyro4.Proxy(f"PYRONAME:Node.{self.succesor}")

@@ -73,49 +73,69 @@ class ServerWorker(threading.Thread):
             socks = dict(poller.poll(4000))
             if (worker in socks and socks[worker] == zmq.POLLIN):
                 ident, url = worker.recv_multipart(zmq.NOBLOCK)
-                r = self.CheckInChord(url,socketForScraper)
-                if not r:
+                r = list(filter(lambda x: x!= None, self.CheckInChord(url.decode()))) 
+                if len(r) == 0:
                     socketForScraper.send(url)
                 else:
-                    worker.send_multipart([ident,url,r.encode()])
+                    #si la lista de scraped_urls esta vacia scrapear esa url
+                    for u,html in r:
+                        worker.send_multipart([ident,u.encode(),html.encode()])
 
             if (socketForScraper in socks and socks[socketForScraper] == zmq.POLLIN):
-                r1,r2 = socketForScraper.recv_multipart(zmq.NOBLOCK)
-                tprint('Worker received %s from scraper' % r1)
-                url = r1.decode()
-                data = r2.decode()
+                #aki se recibe url,html,urls_scraped
                 
-                worker.send_multipart([ident,r1,r2])
+                    result = socketForScraper.recv_multipart(zmq.NOBLOCK)
+                    tprint('Worker received %s from scraper' % result[0])
+                    url = result[0].decode()
+                    data = result[1].decode()
+                    scraped_urls = []
+
+                    try:
+                        scraped_urls = result[2:]
+                    except IndexError:
+                        pass
+
+                    decode_scraped_urls = list(map(lambda x: x.decode(), scraped_urls))
+                    
+                    worker.send_multipart([ident,result[0],result[1]])
                
 
-                if data != '-1':
-                    self.SaveInChord(url, data)
+                    if data != '-1':
+                        self.SaveInChord(url, data,decode_scraped_urls)
+                
              
             #     time.sleep(1. / (randint(1,10)))
            
         worker.close()
 
 
-    def CheckInChord(self,url,socketForScraper):
+    def CheckInChord(self,url):
         hashedUrl = getHash(url)
-        # try:
-        return self.LookUrlInChord(hashedUrl,url) 
-        # except :
-        #     print("Error")
-            
-    def SaveInChord(self, url, html):
+        html,scraped_urls = self.LookUrlInChord(hashedUrl,url) 
+
+        if not html:
+            yield None
+        else:    
+            yield (url,html)
+
+        if scraped_urls:
+            for u in scraped_urls:
+                self.CheckInChord(u)
+
+       
+    def SaveInChord(self, url, html,scraped_urls):
         try:
             id = getHash(url)
-            entry_point = self.FindEntryPoint() #Pyro4.Proxy(f"PYRONAME:Node.{8}")#aki hay q poner mas de uno por si falla
+            entry_point = self.FindEntryPoint()
             if entry_point:
                 chord_node_id = entry_point.LookUp(id)
                 chord_node_with_html = Pyro4.Proxy(f"PYRONAME:Node.{chord_node_id}")
-                chord_node_with_html.Save(url,html)
+                chord_node_with_html.Save(url,html,scraped_urls)
             else: 
                 return None
         except CommunicationError:
             print('ERRRRRROORRRRR')
-            #probar otro entry point
+
             pass
 
     def FindEntryPoint(self):
@@ -131,7 +151,7 @@ class ServerWorker(threading.Thread):
 
     def LookUrlInChord(self,hashedUrl,url):
         try:
-            id = hashedUrl % const.MAX_NODES 
+            id = hashedUrl  
             print('nodo donde deberia estar ', id)
             entry_point = self.FindEntryPoint() 
             if entry_point:
@@ -139,14 +159,16 @@ class ServerWorker(threading.Thread):
                 print('nodo en el que voy a buscar', chord_node_id)
 
                 chord_node_with_html = Pyro4.Proxy(f"PYRONAME:Node.{chord_node_id}")
-                c = chord_node_with_html.GetUrl(url.decode())
-                return c
+                html,hashed_scraped_urls = chord_node_with_html.GetUrl(url)
+                return (html,hashed_scraped_urls)
+                
+                # return c
             else:
-                return None
+                return None, None
 
-        except CommunicationError:
-            print('ERRRRRROORRRRR')
-            return None
+        except CommunicationError as e:
+            print(e)
+            return None,None
             #probar otro entry point
             pass
 

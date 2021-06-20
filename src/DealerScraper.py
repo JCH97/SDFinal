@@ -4,6 +4,7 @@ import time
 import zmq
 from queue import Queue
 import requests
+import re
 
 from bs4 import BeautifulSoup
 from threading import Thread
@@ -12,6 +13,7 @@ class ScrapperNode:
     def __init__(self,ip='127.0.0.1', port = 9092):
         self.myurls = [b'https://google.com',b'https://example.com',b'https://facebook.com']
         self.workers_queue = Queue()
+        self.available_workers = 0
         self.build(port,ip)
 
     def build(self, port,ip):
@@ -44,8 +46,8 @@ class ScrapperNode:
         # - If client requests, pop next worker and send request to it
 
         # Queue of available workers
-        available_workers = 0
-        workers_list = []
+        # available_workers = 0
+        # workers_list = []
 
         # init poller
         poller = zmq.Poller()
@@ -63,14 +65,15 @@ class ScrapperNode:
             # Handle worker activity on backend
             if (backend in socks and socks[backend] == zmq.POLLIN):
 
-                # Queue worker address for LRU routing
+                # Queue worker address for FIFO routing
                 message = backend.recv_multipart()
+                
                 # assert available_workers < NBR_WORKERS
 
                 worker_addr = message[0]
 
                 # add worker back to the list of workers
-                available_workers += 1
+                self.available_workers += 1
                 # workers_list.append(worker_addr)
                 self.workers_queue.put(worker_addr)
 
@@ -89,7 +92,7 @@ class ScrapperNode:
 
                    
             # poll on frontend only if workers are available
-            if available_workers > 0:
+            if self.available_workers > 0:
 
                 if (frontend in socks and socks[frontend] == zmq.POLLIN):
                     # Now get next client request, route to LRU worker
@@ -98,26 +101,52 @@ class ScrapperNode:
                     [broker_addr,client_addr ,request] = frontend.recv_multipart()
 
                     baseURL = request.decode()
-                    page = requests.get(baseURL)
+                    page = self.scrapp(baseURL)
 
-                    soup = BeautifulSoup(page.content, 'html.parser')
+                    if page == '-1':
+                        frontend.send_multipart([broker_addr,client_addr, 
+                                            request,b'-1'])
+                        
+                    else:
+                        html = page.text
 
-                    urls = []
-                    for link in soup.find_all('a'):
-                        href: str = link.get('href')
-                        if href.startswith(baseURL):
-                            urls.append(href)
-                    
-                    #### papa aqui urls es la lista
+                        soup = BeautifulSoup(page.content, 'html.parser')
 
+                        urls = []
+                        for link in soup.find_all('a'):
+                            href: str = link.get('href')
+                            if href != None and (href.startswith(baseURL) or re.match('^/.+', href)):
+                                urls.append(href)
+                        #revisar que no este ahi BaseUrl
+                        #preguntarle a jose como es q comprueba q no este Baseurl en el
+                        #set, o como mira q no se coja nuevamente en el html
+
+                        not_repeted_urls = []
+                        for u in set(urls):
+                            not_repeted_urls.append(u)
+                        
+                        encoded_urls=[]
+                        for u in not_repeted_urls:
+                            encoded_urls.append(u.encode())
+                        
+                        #ver si se bloquea
+                        frontend.send_multipart([broker_addr,client_addr, 
+                                                request,html.encode()] + encoded_urls)
+                        
+                        t1 = threading.Thread(target=self.BalanceWork,
+                            args=[backend,not_repeted_urls,baseURL,
+                                 broker_addr,client_addr,],daemon=True)
+
+                        t1.start()
                     #  Dequeue and drop the next worker address
                     
-                    for url in self.myurls:
-                        available_workers += -1
-                        worker_id = self.workers_queue.get() 
-                        backend.send_multipart([worker_id,
-                                            broker_addr, client_addr, url])
-                   
+                    # for url in not_repeted_urls:
+                    #     self.available_workers += -1
+                    #     worker_id = self.workers_queue.get() 
+                    #     scraped_url = baseURL + url
+                    #     backend.send_multipart([worker_id,
+                    #                         broker_addr, client_addr, scraped_url.encode()])
+                    
 
         #out of infinite loop: do some housekeeping
         time.sleep(1)
@@ -126,7 +155,13 @@ class ScrapperNode:
         backend.close()
         context.term()
 
-
+    def BalanceWork(self,backend,not_repeted_urls,baseURL,broker_addr,client_addr):
+        for url in not_repeted_urls:
+                        self.available_workers += -1
+                        worker_id = self.workers_queue.get() 
+                        scraped_url = baseURL + url
+                        backend.send_multipart([worker_id,
+                                            broker_addr, client_addr, scraped_url.encode()])
 
     def worker_thread(self,worker_url, context, i):
         """ Worker using DEALER socket to do LRU routing """
@@ -151,7 +186,10 @@ class ScrapperNode:
                 print("%s: %s\n" % (socket.identity.decode('ascii'),
                                 url ), end='')
 
-                r = self.scrapp(url)
+                r = self.scrapp(url) #ver si no da palo
+
+                if r != '-1':
+                    r = r.text
 
                 socket.send_multipart([worker_addr,broker_address,
                         client_address,request, r.encode()])
@@ -163,7 +201,7 @@ class ScrapperNode:
 
     def scrapp(self, url):
         try:
-            return requests.get(url).text   
+            return requests.get(url)   
         except:  
             print(f'An error occurr while retriaving HTML from {url}.') 
             return '-1'        
