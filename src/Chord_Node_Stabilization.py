@@ -51,7 +51,6 @@ class Node:
         if Daemon:
             self.uri = Daemon.register(self)
             if id == None:
-                # self.fixKey()
                 self.key = self.getHash(self.uri)
 
             if self.key < 0 or self.key > 2 ** self._bitsKey - 1:
@@ -59,13 +58,6 @@ class Node:
 
             self._fingerTable = [None]*(self.bitsKey + 1)
 
-    # def fixKey(self):
-    #     try:
-    #         mediator = Pyro4.Proxy(f"PYRONAME:Mediator")
-    #         self._bitsKey = mediator.mbits
-    #     except CommunicationError:
-    #         print("Entry point broken try another")
-    #         return
 
     @property
     def GetUrls(self):
@@ -143,12 +135,17 @@ class Node:
     def Start(self, i):
         return (self.key + 2 ** (i - 1)) % 2 ** self._bitsKey
 
+    @recover_from_failure
     def OutSuccessor(self):
         nodeout =  self._successorList.popleft()
         self.succesor = self._successorList[0]
         if self.predecesor == nodeout:
             self.predecesor = None
-        # self.previousSucc = nodeout
+        succ = Pyro4.Proxy(f"PYRONAME:Node.{self.succesor}")
+        otherSucc = succ.succesor
+        if not otherSucc in self._successorList:
+            self._successorList.append(otherSucc)
+        
       
     def LookUp(self,key):
         if key < 0 or key >= 2 ** self._bitsKey:
@@ -207,13 +204,10 @@ class Node:
                 self.succesor = mediator.FindSuccessor(self.key)
                 if mediator.key == self.key or self.succesor == self.key:
                     raise Exception('This node is already in chord system')
-                else:
-                    # try:                 
+                else:      
                     self._successorList.append(self.key)
                     self.GetUrlsFromSuccesor()   
-
-                    # except CommunicationError:
-                    #     print("Successor broken \n")
+     
             except ConnectionError:
                 print('Entry Point broken')
             
@@ -226,52 +220,11 @@ class Node:
         self._successorList.appendleft(self.succesor)
         self.InitiateNode()
 
-            #     n_uri = mediator.GetUriNode(self.uri)
-            #     if n_uri == '-1':
-            #         raise Exception('Node already en chord\n')
-            #     if n_uri != '':
-            #         n = Pyro4.Proxy(n_uri)
-            #     self._bitsKey = mediator.mbits
-            # except CommunicationError:
-            #     raise Exception("Entry point broken try another\n")
-            #     return
-        # else:
-        #     try:
-        #         n = Pyro4.Proxy(uri)
-        #         n_uri = n.uri 
-        #         # self._bitsKey = n.bitsKey
-        #     except CommunicationError:
-        #         raise Exception("Entry point broken try another\n")
-                
-        
-        # if self.key<0 or self.key>2**self._bitsKey-1:
-        #     raise Exception(f"Node out of range, the id must be between [{0}, {2**self._bitsKey-1}]\n")
-
-
-        # self._fingerTable = [None]*(self.bitsKey + 1)
-
-        # if n_uri != '':
-        #     try:
-        #         self.succesor = n.FindSuccessor(self.key)
-        #         self._successorList.append(self.key)
-        #         self.GetUrlsFromSuccesor()   
-        #         if n.key == self.key:
-        #             raise Exception('Node already in chord\n')
-
-        #     except CommunicationError:
-        #         print("Successor broken \n")
-        # else:
-        #     self.succesor = self.key
-
-        # self._successorList.appendleft(self.succesor)
-        # self.InitiateNode()
 
     @recover_from_failure
     def Stabilize(self):
-        # try:
         succesor = Pyro4.Proxy(f"PYRONAME:Node.{self.succesor}")
-        # if succesor.predecesor == self.previousSucc:
-        #     succesor.predecesor = None
+        
         if succesor.predecesor and self.inbetween(succesor.predecesor, self.key + 1, succesor.key,stabilizing=True):
             with self._successor_lock:
                 self.succesor = succesor.predecesor
@@ -279,10 +232,6 @@ class Node:
                 self.GetUrlsFromSuccesor()              
     
         succesor.Notify(self._id)
-        # except:
-        #     pass
-        #    succesor.Notify(self._id)
-     
 
     def Notify(self,id):
         try:
@@ -359,7 +308,7 @@ class Node:
             print(f'k: {k}, hash(k): {self.getHash(k)}, self.key: {self.key}')
             if self.getHash(k) <= self.key:
                 self.urls[k]= succ_dict_copy[k]
-                del succ_dict[k]#si no sirve pasarle un nuevo dict con los cambios
+                del succ_dict[k]
         
         succ = Pyro4.Proxy(f"PYRONAME:Node.{self.succesor}")
         succ.GetUrls = succ_dict.copy()

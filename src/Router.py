@@ -59,7 +59,7 @@ class ServerWorker(threading.Thread):
 
         context = zmq.Context.instance()
         socketForScraper = context.socket(zmq.DEALER)
-        socketForScraper.connect(f"tcp://127.0.0.1:{9091}") #no se pueden poner puerto e ip fijos
+        socketForScraper.connect(f"tcp://127.0.0.1:{9091}")
        
 
         poller = zmq.Poller()
@@ -74,20 +74,29 @@ class ServerWorker(threading.Thread):
             if (worker in socks and socks[worker] == zmq.POLLIN):
                 ident, url = worker.recv_multipart(zmq.NOBLOCK)
                  
-                r = list(filter(lambda x: x!= None,self.CheckInChord(url.decode()) )) 
+                r = list(self.CheckInChord(url.decode())) 
 
-                if len(r) == 0:
-                    socketForScraper.send(url)
-                else:
-                    #si la lista de scraped_urls esta vacia scrapear esa url
-                    for u,html in r:
+                # if len(r) == 0:
+                #     socketForScraper.send(url)
+                # else:
+                    # si la lista de scraped_urls esta vacia scrapear esa url.
+                    # si se pasa 0 es para que solo devuelva el html, 
+                    # 1 scrapea a 1er nivel.
+                    # si llega un solo valor es q ella fue scrapeada y 
+                    # ahora hay q scrapear su html.
+                for u,html in r:
+                    if html:
                         worker.send_multipart([ident,u.encode(),html.encode()])
-
-                    #si llega un solo valor es q ella fue scrapeada y 
-                    # ahora hay q scrapear su html
-                    if len(r) == 1:
+                    elif len(r) > 1:   
+                        socketForScraper.send_multipart([u.encode(),b'0'])
+                    elif len(r) == 1:
                         url,_= r[0]
-                        socketForScraper.send(url)
+                        socketForScraper.send_multipart([url.encode(),b'1'])
+
+                
+                # if len(r) == 1:
+                #     url,_= r[0]
+                #     socketForScraper.send(url.encode(),b'1')
                         
 
 
@@ -125,7 +134,7 @@ class ServerWorker(threading.Thread):
         html,scraped_urls = self.LookUrlInChord(hashedUrl,url) 
 
         if not html:
-            yield None
+            yield (url,None)
         else:    
             yield (url,html)
 
@@ -175,7 +184,6 @@ class ServerWorker(threading.Thread):
                 print(chord_node_with_html.GetUrls.keys())
                 return (html,hashed_scraped_urls)
                 
-                # return c
             else:
                 return None, None
 

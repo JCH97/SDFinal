@@ -97,47 +97,21 @@ class ScrapperNode:
                     # Now get next client request, route to LRU worker
                     # Client request is [address][empty][request]
 
-                    [broker_addr,client_addr ,request] = frontend.recv_multipart()
+                    [broker_addr,client_addr ,request,depth] = frontend.recv_multipart()
 
                     baseURL = request.decode()
                     page = self.scrapp(baseURL)
-
-                    if page == '-1':
-                        frontend.send_multipart([broker_addr,client_addr, 
-                                            request,b'-1'])
-                        
-                    else:
-                        html = page.text
-
-                        soup = BeautifulSoup(page.content, 'html.parser')
-
-                        urls = []
-                        for link in soup.find_all('a'):
-                            href: str = link.get('href')
-                            if href != None and (href.startswith(baseURL) or re.match('^/.+', href)):
-                                urls.append(href)
-                        #revisar que no este ahi BaseUrl
-                        #preguntarle a jose como es q comprueba q no este Baseurl en el
-                        #set, o como mira q no se coja nuevamente en el html
-
-                        not_repeted_urls = []
-                        for u in set(urls):
-                            not_repeted_urls.append(baseURL + u)
-                        
-                        encoded_urls=[]
-                        for u in not_repeted_urls:
-                            encoded_urls.append(u.encode())
-                        
-                        #ver si se bloquea
-                        frontend.send_multipart([broker_addr,client_addr, 
-                                                request,html.encode()] + encoded_urls)
-                        
-                        t1 = threading.Thread(target=self.BalanceWork,
-                            args=[backend,not_repeted_urls,baseURL,
-                                 broker_addr,client_addr,],daemon=True)
-
-                        t1.start()
                     
+                    if depth == b'1':
+                        self.FirstLevelSrcap(frontend, backend, baseURL,
+                                             broker_addr, client_addr, request, page)
+
+                    else:
+                        self.available_workers += -1
+                        worker_id = self.workers_queue.get()
+                        backend.send_multipart([worker_id,broker_addr, 
+                                                client_addr, baseURL.encode()])
+           
 
         #out of infinite loop: do some housekeeping
         time.sleep(1)
@@ -145,6 +119,48 @@ class ScrapperNode:
         frontend.close()
         backend.close()
         context.term()
+        
+
+
+    #scrapeo del html y urls
+    def FirstLevelSrcap(self,frontend,backend,baseURL,broker_addr,
+                        client_addr,request,page):
+        if page == '-1':
+            frontend.send_multipart([broker_addr,client_addr, 
+                                request,b'-1'])
+                        
+        else:
+            html = page.text
+
+            soup = BeautifulSoup(page.content, 'html.parser')
+
+            urls = []
+            for link in soup.find_all('a'):
+                href: str = link.get('href')
+                if href != None and (href.startswith(baseURL) or re.match('^/.+', href)):
+                    urls.append(href)
+            #revisar que no este ahi BaseUrl
+            #preguntarle a jose como es q comprueba q no este Baseurl en el
+            #set, o como mira q no se coja nuevamente en el html
+
+            not_repeted_urls = []
+            for u in set(urls):
+                not_repeted_urls.append(baseURL + u)
+            
+            encoded_urls=[]
+            for u in not_repeted_urls:
+                encoded_urls.append(u.encode())
+            
+            #ver si se bloquea
+            frontend.send_multipart([broker_addr,client_addr, 
+                                    request,html.encode()] + encoded_urls)
+            
+            t1 = threading.Thread(target=self.BalanceWork,
+                args=[backend,not_repeted_urls,baseURL,
+                        broker_addr,client_addr,],daemon=True)
+
+            t1.start()
+
 
     def BalanceWork(self,backend,not_repeted_urls,baseURL,broker_addr,client_addr):
         for url in not_repeted_urls:
