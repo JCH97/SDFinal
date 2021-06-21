@@ -37,16 +37,12 @@ c = a+b
 # for z,t in e:
 #     print(z,t) 
 
-def y():
-    try:
-        x()
-    except KeyError:
-        print('error')
-
+a = {1:('a','b')}
+print(a[1][1])
 
 def x():
-    r = {'2':2}
-    return r['3']
+    return 0
 
-
-y()
+# a = x()
+# if a:
+#     print(a)

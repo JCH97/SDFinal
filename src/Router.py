@@ -73,26 +73,25 @@ class ServerWorker(threading.Thread):
             if (worker in socks and socks[worker] == zmq.POLLIN):
                 ident, url = worker.recv_multipart(zmq.NOBLOCK)
                  
-                r = list(self.CheckInChord(url.decode())) 
-
-                    # si la lista de scraped_urls esta vacia scrapear esa url.
-                    # (2 parametro)
-                    # 1 -> ya estaba en chord,0 no estaba
-                    # (3 parametro)
-                    # si se pasa 0 es para que solo devuelva el html, 
-                    # 1 scrapea a 1er nivel.
-                    # si llega un solo valor es que ella fue scrapeada y 
-                    # ahora hay que scrapear su html.
-                for u,html in r:
-                    if html:
-                        worker.send_multipart([ident,u.encode(),html.encode()])
-                        if len(r)==1:
-                            socketForScraper.send_multipart([r.encode(),b'1',b'1'])
-                    elif len(r) > 1:   
-                        socketForScraper.send_multipart([u.encode(),b'0',b'0'])
-                    elif len(r) == 1:
-                        url,_= r[0]
-                        socketForScraper.send_multipart([url.encode(),b'0',b'1'])
+                r = self.CheckInChord(url.decode())
+                if r:
+                    worker.send_multipart([ident,url,r.encode()])
+                    if r[1] == 0:
+                        socketForScraper.send_multipart([url,b'1'])
+                else:
+                     socketForScraper.send_multipart([url,b'0'])
+                    
+                    
+                # for u,html in r:
+                #     if html:
+                #         worker.send_multipart([ident,u.encode(),html.encode()])
+                #         if len(r)==1:
+                #             socketForScraper.send_multipart([r.encode(),b'1',b'1'])
+                #     elif len(r) > 1:   
+                #         socketForScraper.send_multipart([u.encode(),b'0',b'0'])
+                #     elif len(r) == 1:
+                #         url,_= r[0]
+                #         socketForScraper.send_multipart([url.encode(),b'0',b'1'])
 
 
             if (socketForScraper in socks and socks[socketForScraper] == zmq.POLLIN):
@@ -103,20 +102,20 @@ class ServerWorker(threading.Thread):
                     url = result[0].decode()
                     data = result[1].decode()
                     send = result[2]
-                    scraped_urls = []
+                    
+                    # scraped_urls = []
 
-                    try:
-                        scraped_urls = result[3:]
-                    except IndexError:
-                        pass
+                    # try:
+                    #     scraped_urls = result[3:]
+                    # except IndexError:
+                    #     pass
                     
                     if send == b'0':
-                        decode_scraped_urls = list(map(lambda x: x.decode(), scraped_urls))
-                    
-                    worker.send_multipart([ident,result[0],result[1]])
+                        # decode_scraped_urls = list(map(lambda x: x.decode(), scraped_urls))
+                        worker.send_multipart([ident,result[0],result[1]])
                
-                    if data != '-1':
-                        self.SaveInChord(url, data,decode_scraped_urls)
+                        if data != '-1':
+                            self.SaveInChord(url, data,1)
                 
              
             #     time.sleep(1. / (randint(1,10)))
@@ -126,27 +125,17 @@ class ServerWorker(threading.Thread):
 
     def CheckInChord(self,url):
         hashedUrl = getHash(url)
-        html,scraped_urls = self.LookUrlInChord(hashedUrl,url) 
-
-        if not html:
-            yield (url,None)
-        else:    
-            yield (url,html)
-
-        if scraped_urls:
-            for u in scraped_urls:
-                for s in self.CheckInChord(u):
-                    yield s 
-
+        return self.LookUrlInChord(hashedUrl,url) 
        
-    def SaveInChord(self, url, html,scraped_urls):
+       
+    def SaveInChord(self, url, html, was_scraped):
         try:
             id = getHash(url)
             entry_point = self.FindEntryPoint()
             if entry_point:
                 chord_node_id = entry_point.LookUp(id)
                 chord_node_with_html = Pyro4.Proxy(f"PYRONAME:Node.{chord_node_id}")
-                chord_node_with_html.Save(url,html,scraped_urls)
+                chord_node_with_html.Save(url,html,was_scraped)
             else: 
                 return None
         except CommunicationError:
@@ -175,16 +164,13 @@ class ServerWorker(threading.Thread):
                 print('nodo en el que voy a buscar', chord_node_id)
 
                 chord_node_with_html = Pyro4.Proxy(f"PYRONAME:Node.{chord_node_id}")
-                html,hashed_scraped_urls = chord_node_with_html.GetUrl(url)
-                print(chord_node_with_html.GetUrls.keys())
-                return (html,hashed_scraped_urls)
-                
+                return chord_node_with_html.GetUrl(url)
             else:
-                return None, None
+                return None
 
         except CommunicationError as e:
             print(e)
-            return None,None
+            return None
             #probar otro entry point
             pass
 

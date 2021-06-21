@@ -69,9 +69,6 @@ class ScrapperNode:
 
                 # Queue worker address for FIFO routing
                 message = backend.recv_multipart()
-                
-                # assert available_workers < NBR_WORKERS
-
                 worker_addr = message[0]
 
                 # add worker back to the list of workers
@@ -80,22 +77,7 @@ class ScrapperNode:
                 # quitar el with si da palo
                 with threading.Lock():
                     self.workers_queue.put(worker_addr)
-
-                # Third frame is READY or else a client reply address
-                response1 = message[3]
-
-                # If client reply, send rest back to frontend
-                if response1 != b'READY':
-                    broker_addr = message[1]
-                    client_addr = message[2]
-
-                    response2 = message[4]
-                    response3 = message[5]
-                    print('sending-> ' + response1.decode())
-
-                    frontend.send_multipart([broker_addr,client_addr, 
-                        response1,response2,response3])
-
+                
                    
             # poll on frontend only if workers are available
             if self.available_workers > 0:
@@ -104,22 +86,16 @@ class ScrapperNode:
                     # Now get next client request, route to LRU worker
                     # Client request is [address][empty][request]
 
-                    [broker_addr,client_addr ,
-                    request,Baseinchord,depth] = frontend.recv_multipart()
+                    [broker_addr,client_addr,request,Baseinchord] = frontend.recv_multipart()
 
                     baseURL = request.decode()
                     page = self.scrapp(baseURL)
                     
-                    if depth == b'1':
-                        self.FirstLevelSrcap(frontend, backend, baseURL,
-                                             broker_addr, client_addr,
-                                             Baseinchord ,request, page)
+                   
+                    self.FirstLevelSrcap(frontend, backend, baseURL,
+                                            broker_addr, client_addr,
+                                            Baseinchord ,request, page)
 
-                    else:
-                        self.available_workers += -1
-                        worker_id = self.workers_queue.get()
-                        backend.send_multipart([worker_id,broker_addr, 
-                                                client_addr, baseURL.encode()])
            
 
         #out of infinite loop: do some housekeeping
@@ -176,7 +152,7 @@ class ScrapperNode:
                 encoded_urls.append(u.encode())
 
             frontend.send_multipart([broker_addr,client_addr, 
-                                    request,html.encode(),Baseinchord] + encoded_urls)
+                                    request,html.encode(), Baseinchord])
             
             t1 = threading.Thread(target=self.BalanceWork,
                 args=[backend,not_repeted_urls,baseURL,
@@ -202,7 +178,7 @@ class ScrapperNode:
         socket.connect(worker_url)
 
         # Tell the broker we are ready for work
-        socket.send_multipart([socket.identity,b'',b'',b"READY"])
+        socket.send_multipart([socket.identity,b"READY"])
 
         try:
             while True:
@@ -216,16 +192,16 @@ class ScrapperNode:
 
                 r = '-1'
                 
+                
                 try:
-                    r,_ = self.LookUrlInChord(getHash(url), url)
-                  
+                    r = self.LookUrlInChord(getHash(url), url)          
                 except CommunicationError:
                     r = self.scrapp(url)
                     if r != '-1':
                         r = r.text
+                        self.SaveInChord(url, r,0)
 
-                socket.send_multipart([worker_addr,broker_address,
-                        client_address,request, r.encode(),b'0'])
+                socket.send_multipart([socket.identity,b"READY"])
 
         except zmq.ContextTerminated:
             # context terminated so quit silently
@@ -247,18 +223,29 @@ class ScrapperNode:
         entry_point = self.FindEntryPoint() 
         if entry_point:
             chord_node_id = entry_point.LookUp(id)
-            print('nodo en el que voy a buscar', chord_node_id)
-
             chord_node_with_html = Pyro4.Proxy(f"PYRONAME:Node.{chord_node_id}")
-            html,hashed_scraped_urls = chord_node_with_html.GetUrl(url)
+            html = chord_node_with_html.GetUrl(url)
             if html:
-                return (html,hashed_scraped_urls)
-            raise CommunicationError()
+                return html
+            raise CommunicationError
             
         else:
             raise CommunicationError
 
 
+    def SaveInChord(self, url, html,scraped_urls):
+        try:
+            id = getHash(url)
+            entry_point = self.FindEntryPoint()
+            if entry_point:
+                chord_node_id = entry_point.LookUp(id)
+                chord_node_with_html = Pyro4.Proxy(f"PYRONAME:Node.{chord_node_id}")
+                chord_node_with_html.Save(url,html,scraped_urls)
+            else: 
+                return None
+        except CommunicationError:
+            print('ERRRRRROORRRRR')
+            pass
             
 
 

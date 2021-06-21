@@ -141,12 +141,7 @@ class Node:
         self.succesor = self._successorList[0]
         if self.predecesor == nodeout:
             self.predecesor = None
-        succ = Pyro4.Proxy(f"PYRONAME:Node.{self.succesor}")
-        otherSucc = succ.succesor
-        if not otherSucc in self._successorList:
-            self._successorList.append(otherSucc)
         
-      
     def LookUp(self,key):
         if key < 0 or key >= 2 ** self._bitsKey:
             print('key out of range')
@@ -286,19 +281,16 @@ class Node:
             return r
         except KeyError:
             print(f'Node {self._id} todavia no tiene '+url)
-            return None,None
+            return None
     
-    def Save(self, url,html,hashed_scraped_urls):
+    def Save(self, url,html,was_scraped):
         try:
             self.urls[url]
-            if len(hashed_scraped_urls)>0:
-                html,_ = self.urls[url]
-                self.urls[url] = (html,hashed_scraped_urls)
+            if was_scraped:
+                self.urls[url] = (self.urls[url][0],1)
         except KeyError:
             # print(f'Node {self._id} saving '+url)
-            self.urls[url] = (html,hashed_scraped_urls)
-            _,b = self.urls[url]
-            print(b)
+            self.urls[url] = (html,1)
     
     def GetUrlsFromSuccesor(self):
         succ = Pyro4.Proxy(f"PYRONAME:Node.{self.succesor}")
