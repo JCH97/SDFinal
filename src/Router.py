@@ -4,10 +4,9 @@ from Pyro4.errors import PyroError, CommunicationError
 import time
 import threading
 import zmq
-import sys
-import base64 
 import hashlib
 import const
+import sys
 
 sys.excepthook = Pyro4.util.excepthook  
     
@@ -75,22 +74,23 @@ class ServerWorker(threading.Thread):
             if (worker in socks and socks[worker] == zmq.POLLIN):
                 ident, url = worker.recv_multipart(zmq.NOBLOCK)
                  
-                r = list(filter(lambda x: x!= None,self.CheckInChord(url.decode()) )) 
+                r = list(self.CheckInChord(url.decode())) 
 
-                if len(r) == 0:
-                    socketForScraper.send(url)
-                else:
-                    #si la lista de scraped_urls esta vacia scrapear esa url
-                    for u,html in r:
+                    # si la lista de scraped_urls esta vacia scrapear esa url.
+                    # si se pasa 0 es para que solo devuelva el html, 
+                    # 1 scrapea a 1er nivel.
+                    # si llega un solo valor es q ella fue scrapeada y 
+                    # ahora hay q scrapear su html.
+                for u,html in r:
+                    if html:
                         worker.send_multipart([ident,u.encode(),html.encode()])
-
-                    #si llega un solo valor es q ella fue scrapeada y 
-                    # ahora hay q scrapear su html
-                    if len(r) == 1:
+                        if len(r)==1:
+                            socketForScraper.send_multipart([r.encode(),b'1'])
+                    elif len(r) > 1:   
+                        socketForScraper.send_multipart([u.encode(),b'0'])
+                    elif len(r) == 1:
                         url,_= r[0]
-                        socketForScraper.send(url)
-                        
-
+                        socketForScraper.send_multipart([url.encode(),b'1'])
 
 
             if (socketForScraper in socks and socks[socketForScraper] == zmq.POLLIN):
@@ -111,7 +111,6 @@ class ServerWorker(threading.Thread):
                     
                     worker.send_multipart([ident,result[0],result[1]])
                
-
                     if data != '-1':
                         self.SaveInChord(url, data,decode_scraped_urls)
                 
@@ -126,7 +125,7 @@ class ServerWorker(threading.Thread):
         html,scraped_urls = self.LookUrlInChord(hashedUrl,url) 
 
         if not html:
-            yield None
+            yield (url,None)
         else:    
             yield (url,html)
 
@@ -157,7 +156,7 @@ class ServerWorker(threading.Thread):
                 try:
                     n = Pyro4.Proxy(node_uri)
                     n.IsAlive()
-                    return n#si no sirve mandar el id
+                    return n
                 except CommunicationError:
                     continue
             return None
@@ -176,7 +175,6 @@ class ServerWorker(threading.Thread):
                 print(chord_node_with_html.GetUrls.keys())
                 return (html,hashed_scraped_urls)
                 
-                # return c
             else:
                 return None, None
 

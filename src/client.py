@@ -63,8 +63,9 @@ class Client:
                 raise e
 
     def Send(self):
-        url = b'https://facebook.com'
-        self.socket.send(url)
+        while True:
+            url = input('url to be scraped: ')
+            self.socket.send(url.encode())
 
 def main():
     # ip = str(input('ip to connect to: '))
