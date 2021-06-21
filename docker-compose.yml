@@ -16,7 +16,7 @@ services:
     image: jch/chord
     container_name: broker-1
     restart: unless-stopped
-    command: /bin/sh -c "python src/REQ_REP_broker.py"
+    command: /bin/sh -c "python src/Broker.py"
     volumes:
       - .:/chord
     networks:
@@ -30,7 +30,7 @@ services:
     image: jch/chord
     container_name: broker-2
     restart: unless-stopped
-    command: /bin/sh -c "python src/REQ_REP_broker.py"
+    command: /bin/sh -c "python src/Broker.py"
     volumes:
       - .:/chord
     networks:
@@ -39,12 +39,38 @@ services:
     expose:
       - 9091
       - 9092
-
-  scrapper-1:
+  
+  router-1:
     image: jch/chord
-    container_name: scrapper-1
+    container_name: router-1
     restart: unless-stopped
-    command: /bin/sh -c "python src/ScrapperNode.py"
+    command: /bin/sh -c "python src/Router.py"
+    volumes:
+      - .:/chord
+    networks:
+      default:
+        ipv4_address: 10.0.0.7
+    expose:
+      - 9092
+
+  router-2:
+    image: jch/chord
+    container_name: router-2
+    restart: unless-stopped
+    command: /bin/sh -c "python src/Router.py"
+    volumes:
+      - .:/chord
+    networks:
+      default:
+        ipv4_address: 10.0.0.8
+    expose:
+      - 9092
+
+  dealer-1:
+    image: jch/chord
+    container_name: dealer-1
+    restart: unless-stopped
+    command: /bin/sh -c "python src/DealerScraper.py"
     volumes:
       - .:/chord
     networks:
@@ -53,11 +79,11 @@ services:
     expose:
       - 9092
 
-  scrapper-2:
+  dealer-2:
     image: jch/chord
-    container_name: scrapper-2
+    container_name: dealer-2
     restart: unless-stopped
-    command: /bin/sh -c "python src/ScrapperNode.py"
+    command: /bin/sh -c "python src/DealerScraper.py"
     volumes:
       - .:/chord
     networks:
@@ -65,7 +91,7 @@ services:
         ipv4_address: 10.0.0.6
     expose:
       - 9092
-
+  
   chord-node-1:
     image: jch/chord
     container_name: chord-node-1

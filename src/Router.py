@@ -58,7 +58,8 @@ class ServerWorker(threading.Thread):
 
         context = zmq.Context.instance()
         socketForScraper = context.socket(zmq.DEALER)
-        socketForScraper.connect(f"tcp://127.0.0.1:{9091}")
+        socketForScraper.connect(f"tcp://10.0.0.3:9091")
+        socketForScraper.connect(f"tcp://10.0.0.4:9091")
        
 
         poller = zmq.Poller()
@@ -75,7 +76,9 @@ class ServerWorker(threading.Thread):
                  
                 r = self.CheckInChord(url.decode())
                 if r:
-                    worker.send_multipart([ident,url,r.encode()])
+                    # print(type(r[0]))
+                    # print(r[0])
+                    worker.send_multipart([ident,url,r[0].encode()])
                     if r[1] == 0:
                         socketForScraper.send_multipart([url,b'1'])
                 else:

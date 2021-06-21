@@ -290,7 +290,7 @@ class Node:
                 self.urls[url] = (self.urls[url][0],1)
         except KeyError:
             # print(f'Node {self._id} saving '+url)
-            self.urls[url] = (html,1)
+            self.urls[url] = (html, was_scraped)
     
     def GetUrlsFromSuccesor(self):
         succ = Pyro4.Proxy(f"PYRONAME:Node.{self.succesor}")

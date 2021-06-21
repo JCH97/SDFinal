@@ -20,7 +20,7 @@ def getHash(key):
 
 
 class ScrapperNode:
-    def __init__(self,ip='127.0.0.1', port = 9092):
+    def __init__(self,ip = '127.0.0.1', port = 9092):
         # Queue of available workers
         self.workers_queue = Queue()
         self.available_workers = 0
@@ -37,7 +37,8 @@ class ScrapperNode:
        
 
         frontend = context.socket(zmq.ROUTER)
-        frontend.connect(f"tcp://{ip}:%s" % port)
+        frontend.connect(f"tcp://10.0.0.3:9092")
+        frontend.connect(f"tcp://10.0.0.4:9092")
 
         backend = context.socket(zmq.DEALER)
         backend.bind(url_worker)
@@ -233,14 +234,14 @@ class ScrapperNode:
             raise CommunicationError
 
 
-    def SaveInChord(self, url, html,scraped_urls):
+    def SaveInChord(self, url, html, was_scraped):
         try:
             id = getHash(url)
             entry_point = self.FindEntryPoint()
             if entry_point:
                 chord_node_id = entry_point.LookUp(id)
                 chord_node_with_html = Pyro4.Proxy(f"PYRONAME:Node.{chord_node_id}")
-                chord_node_with_html.Save(url,html,scraped_urls)
+                chord_node_with_html.Save(url,html,was_scraped)
             else: 
                 return None
         except CommunicationError:
