@@ -90,9 +90,11 @@ class ScrapperNode:
                     client_addr = message[2]
 
                     response2 = message[4]
+                    response3 = message[5]
                     print('sending-> ' + response1.decode())
 
-                    frontend.send_multipart([broker_addr,client_addr, response1,response2])
+                    frontend.send_multipart([broker_addr,client_addr, 
+                        response1,response2,response3])
 
                    
             # poll on frontend only if workers are available
@@ -102,14 +104,16 @@ class ScrapperNode:
                     # Now get next client request, route to LRU worker
                     # Client request is [address][empty][request]
 
-                    [broker_addr,client_addr ,request,depth] = frontend.recv_multipart()
+                    [broker_addr,client_addr ,
+                    request,Baseinchord,depth] = frontend.recv_multipart()
 
                     baseURL = request.decode()
                     page = self.scrapp(baseURL)
                     
                     if depth == b'1':
                         self.FirstLevelSrcap(frontend, backend, baseURL,
-                                             broker_addr, client_addr, request, page)
+                                             broker_addr, client_addr,
+                                             Baseinchord ,request, page)
 
                     else:
                         self.available_workers += -1
@@ -147,10 +151,10 @@ class ScrapperNode:
 
     #scrapeo del html y urls
     def FirstLevelSrcap(self,frontend,backend,baseURL,broker_addr,
-                        client_addr,request,page):
+                        client_addr,Baseinchord,request,page):
         if page == '-1':
             frontend.send_multipart([broker_addr,client_addr, 
-                                request,b'-1'])
+                                request,b'-1',Baseinchord])
                         
         else:
             html = page.text
@@ -162,9 +166,6 @@ class ScrapperNode:
                 href: str = link.get('href')
                 if href != None and (href.startswith(baseURL) or re.match('^/.+', href)):
                     urls.append(href)
-            #revisar que no este ahi BaseUrl
-            #preguntarle a jose como es q comprueba q no este Baseurl en el
-            #set, o como mira q no se coja nuevamente en el html
 
             not_repeted_urls = []
             for u in set(urls):
@@ -173,10 +174,9 @@ class ScrapperNode:
             encoded_urls=[]
             for u in not_repeted_urls:
                 encoded_urls.append(u.encode())
-            
-            #ver si se bloquea
+
             frontend.send_multipart([broker_addr,client_addr, 
-                                    request,html.encode()] + encoded_urls)
+                                    request,html.encode(),Baseinchord] + encoded_urls)
             
             t1 = threading.Thread(target=self.BalanceWork,
                 args=[backend,not_repeted_urls,baseURL,
@@ -189,7 +189,6 @@ class ScrapperNode:
         for url in not_repeted_urls:
                         self.available_workers += -1
                         worker_id = self.workers_queue.get() 
-                        # scraped_url = baseURL + url
                         backend.send_multipart([worker_id,
                                             broker_addr, client_addr, url.encode()])
 
@@ -207,7 +206,7 @@ class ScrapperNode:
 
         try:
             while True:
-                # a = socket.recv_multipart()
+                
                 worker_addr, broker_address,client_address, request = socket.recv_multipart()
 
                 url = request.decode('ascii')
@@ -216,15 +215,17 @@ class ScrapperNode:
                                 url ), end='')
 
                 r = '-1'
+                
                 try:
                     r,_ = self.LookUrlInChord(getHash(url), url)
+                  
                 except CommunicationError:
                     r = self.scrapp(url)
                     if r != '-1':
                         r = r.text
 
                 socket.send_multipart([worker_addr,broker_address,
-                        client_address,request, r.encode()])
+                        client_address,request, r.encode(),b'0'])
 
         except zmq.ContextTerminated:
             # context terminated so quit silently
@@ -250,8 +251,9 @@ class ScrapperNode:
 
             chord_node_with_html = Pyro4.Proxy(f"PYRONAME:Node.{chord_node_id}")
             html,hashed_scraped_urls = chord_node_with_html.GetUrl(url)
-            print(chord_node_with_html.GetUrls.keys())
-            return (html,hashed_scraped_urls)
+            if html:
+                return (html,hashed_scraped_urls)
+            raise CommunicationError()
             
         else:
             raise CommunicationError
