@@ -2,15 +2,24 @@ a = [1,2,3,4]
 b= [b'a',b'r']
 c = a+b
 
-decode_scraped_urls = list(map(lambda x: x.decode(), b))
-# print(a[2:])
-print(type(decode_scraped_urls))
+
+
+# decode_scraped_urls = list(map(lambda x: x.decode(), b))
+# # print(a[2:])
+# print(type(decode_scraped_urls))
 # def y():
-#     for i in range(5):
-#         if i%2==1:
-#             yield None
+#     for i in range(10):
+#         if i == 5:
+#             raise StopIteration
+#         # if i%2==1:
+#         #     yield None
 #         else:
 #             yield ('abel','es un animal')
+
+# for i in y():
+#     print(i)
+
+
 
 # s = y()
 # no = list(filter(lambda e: e != None, s))
@@ -28,3 +37,16 @@ print(type(decode_scraped_urls))
 # for z,t in e:
 #     print(z,t) 
 
+def y():
+    try:
+        x()
+    except KeyError:
+        print('error')
+
+
+def x():
+    r = {'2':2}
+    return r['3']
+
+
+y()

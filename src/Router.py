@@ -4,8 +4,6 @@ from Pyro4.errors import PyroError, CommunicationError
 import time
 import threading
 import zmq
-import sys
-import base64 
 import hashlib
 import const
 
@@ -76,9 +74,6 @@ class ServerWorker(threading.Thread):
                  
                 r = list(self.CheckInChord(url.decode())) 
 
-                # if len(r) == 0:
-                #     socketForScraper.send(url)
-                # else:
                     # si la lista de scraped_urls esta vacia scrapear esa url.
                     # si se pasa 0 es para que solo devuelva el html, 
                     # 1 scrapea a 1er nivel.
@@ -87,18 +82,13 @@ class ServerWorker(threading.Thread):
                 for u,html in r:
                     if html:
                         worker.send_multipart([ident,u.encode(),html.encode()])
+                        if len(r)==1:
+                            socketForScraper.send_multipart([r.encode(),b'1'])
                     elif len(r) > 1:   
                         socketForScraper.send_multipart([u.encode(),b'0'])
                     elif len(r) == 1:
                         url,_= r[0]
                         socketForScraper.send_multipart([url.encode(),b'1'])
-
-                
-                # if len(r) == 1:
-                #     url,_= r[0]
-                #     socketForScraper.send(url.encode(),b'1')
-                        
-
 
 
             if (socketForScraper in socks and socks[socketForScraper] == zmq.POLLIN):
@@ -119,7 +109,6 @@ class ServerWorker(threading.Thread):
                     
                     worker.send_multipart([ident,result[0],result[1]])
                
-
                     if data != '-1':
                         self.SaveInChord(url, data,decode_scraped_urls)
                 
@@ -165,7 +154,7 @@ class ServerWorker(threading.Thread):
                 try:
                     n = Pyro4.Proxy(node_uri)
                     n.IsAlive()
-                    return n#si no sirve mandar el id
+                    return n
                 except CommunicationError:
                     continue
             return None
