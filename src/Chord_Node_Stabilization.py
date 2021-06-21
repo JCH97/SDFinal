@@ -291,7 +291,9 @@ class Node:
     def Save(self, url,html,hashed_scraped_urls):
         try:
             self.urls[url]
-            pass
+            if len(hashed_scraped_urls)>0:
+                html,_ = self.urls[url]
+                self.urls[url] = (html,hashed_scraped_urls)
         except KeyError:
             # print(f'Node {self._id} saving '+url)
             self.urls[url] = (html,hashed_scraped_urls)

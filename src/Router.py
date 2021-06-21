@@ -6,6 +6,7 @@ import threading
 import zmq
 import hashlib
 import const
+import sys
 
 sys.excepthook = Pyro4.util.excepthook  
     
@@ -75,20 +76,23 @@ class ServerWorker(threading.Thread):
                 r = list(self.CheckInChord(url.decode())) 
 
                     # si la lista de scraped_urls esta vacia scrapear esa url.
+                    # (2 parametro)
+                    # 1 -> ya estaba en chord,0 no estaba
+                    # (3 parametro)
                     # si se pasa 0 es para que solo devuelva el html, 
                     # 1 scrapea a 1er nivel.
-                    # si llega un solo valor es q ella fue scrapeada y 
-                    # ahora hay q scrapear su html.
+                    # si llega un solo valor es que ella fue scrapeada y 
+                    # ahora hay que scrapear su html.
                 for u,html in r:
                     if html:
                         worker.send_multipart([ident,u.encode(),html.encode()])
                         if len(r)==1:
-                            socketForScraper.send_multipart([r.encode(),b'1'])
+                            socketForScraper.send_multipart([r.encode(),b'1',b'1'])
                     elif len(r) > 1:   
-                        socketForScraper.send_multipart([u.encode(),b'0'])
+                        socketForScraper.send_multipart([u.encode(),b'0',b'0'])
                     elif len(r) == 1:
                         url,_= r[0]
-                        socketForScraper.send_multipart([url.encode(),b'1'])
+                        socketForScraper.send_multipart([url.encode(),b'0',b'1'])
 
 
             if (socketForScraper in socks and socks[socketForScraper] == zmq.POLLIN):
@@ -98,14 +102,16 @@ class ServerWorker(threading.Thread):
                     tprint('Worker received %s from scraper' % result[0])
                     url = result[0].decode()
                     data = result[1].decode()
+                    send = result[2]
                     scraped_urls = []
 
                     try:
-                        scraped_urls = result[2:]
+                        scraped_urls = result[3:]
                     except IndexError:
                         pass
-
-                    decode_scraped_urls = list(map(lambda x: x.decode(), scraped_urls))
+                    
+                    if send == b'0':
+                        decode_scraped_urls = list(map(lambda x: x.decode(), scraped_urls))
                     
                     worker.send_multipart([ident,result[0],result[1]])
                
