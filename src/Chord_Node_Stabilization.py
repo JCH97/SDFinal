@@ -347,7 +347,7 @@ class Node:
             # print(f'Node {self._id} saving '+url)
             self.urls[url] = (html,hashed_scraped_urls)
             _,b = self.urls[url]
-            print(b)
+            # print(b)
     
     def GetUrlsFromSuccesor(self):
         succ = Pyro4.Proxy(f"PYRONAME:Node.{self.succesor}")

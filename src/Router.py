@@ -59,7 +59,8 @@ class ServerWorker(threading.Thread):
 
         context = zmq.Context.instance()
         socketForScraper = context.socket(zmq.DEALER)
-        socketForScraper.connect(f"tcp://10.0.0.3:{9091}") #no se pueden poner puerto e ip fijos
+        socketForScraper.connect(f"tcp://10.0.0.3:9091")
+        socketForScraper.connect(f"tcp://10.0.0.4:9091")
        
 
         poller = zmq.Poller()

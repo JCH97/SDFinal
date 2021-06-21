@@ -51,7 +51,8 @@ class Client:
                             file = re.sub(pattern, '.', url)
 
                             if Html != '-1':   
-                                with open(f'{os.getcwd()}/{file}.html', 'w') as file:
+                                with open(f'{os.getcwd()}/htmls/{file}.html', 'w') as file:
+                                    print(f'Writing file {file.name}.html')
                                     file.write(Html)
                             else:
                                 print("There was an error trying to retrive de html")
@@ -68,7 +69,7 @@ class Client:
 def main():
     # ip = str(input('ip to connect to: '))
     port = 5555
-    c = Client('10.0.0.11', port)
+    c = Client('10.0.0.8', port)
     t1 = threading.Thread(target=c.Send,daemon=True)
     t2 = threading.Thread(target=c.Recv)
     t1.start()

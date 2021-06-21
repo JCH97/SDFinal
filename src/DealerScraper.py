@@ -26,7 +26,8 @@ class ScrapperNode:
        
 
         frontend = context.socket(zmq.ROUTER)
-        frontend.connect(f"tcp://{ip}:%s" % port)
+        frontend.connect(f"tcp://{ip}:{port}")
+        frontend.connect(f"tcp://10.0.0.4:9092")
 
         backend = context.socket(zmq.DEALER)
         backend.bind(url_worker)
