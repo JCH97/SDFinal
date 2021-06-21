@@ -110,11 +110,10 @@ class ServerWorker(threading.Thread):
                         scraped_urls = result[3:]
                     except IndexError:
                         pass
+                    decode_scraped_urls = list(map(lambda x: x.decode(), scraped_urls))
                     
                     if send == b'0':
-                        decode_scraped_urls = list(map(lambda x: x.decode(), scraped_urls))
-                    
-                    worker.send_multipart([ident,result[0],result[1]])
+                        worker.send_multipart([ident,result[0],result[1]])
                
                     if data != '-1':
                         self.SaveInChord(url, data,decode_scraped_urls)

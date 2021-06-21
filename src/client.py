@@ -52,7 +52,6 @@ class Client:
 
                             if Html != '-1':   
                                 with open(f'{os.getcwd()}/htmls/{file}.html', 'w') as file:
-                                    print(f'Writing file {file.name}.html')
                                     file.write(Html)
                             else:
                                 print("There was an error trying to retrive de html")
