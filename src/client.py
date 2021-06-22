@@ -20,7 +20,6 @@ class Client:
         zmq_req_socket = context.socket(zmq.DEALER)
 
         for ip in ipList:
-            print(ip)
             zmq_req_socket.connect(f"tcp://{ip}:{port}")
         return zmq_req_socket
 

@@ -21,32 +21,41 @@ def getHash(key):
 
 class ScrapperNode:
     def __init__(self,ip = '127.0.0.1', port = 9092):
+        # Queue of available urls
+        self.urls_queue = Queue()
         # Queue of available workers
         self.workers_queue = Queue()
         self.available_workers = 0
-        self.build(port,ip)
+        self.url_worker = "inproc://workers"
+        self.backend,self.frontend,context =  self.build(port,ip)
+        self.start(context)
 
-    def build(self, port,ip):
-        """Server routine"""
-        NBR_WORKERS = 3
+    def build(self, port,ip):        
 
-        url_worker = "inproc://workers"
-       
         # Prepare our context and sockets
         context = zmq.Context()
-       
 
         frontend = context.socket(zmq.ROUTER)
         frontend.connect(f"tcp://10.0.0.3:9092")
         frontend.connect(f"tcp://10.0.0.4:9092")
 
         backend = context.socket(zmq.DEALER)
-        backend.bind(url_worker)
+        backend.bind(self.url_worker)
+
+        return backend,frontend,context
+
+    def start(self,context):
+        
+        NBR_WORKERS = 3
+
+        t1 = threading.Thread(target=self.BalanceWork,daemon=True)
+        t1.start()
+
 
         # create workers and clients threads
         for i in range(NBR_WORKERS):
             thread = threading.Thread(target=self.worker_thread,
-                                    args=(url_worker, context, i, ))
+                                    args=(self.url_worker, context, i, ))
             thread.start()
 
 
@@ -56,20 +65,20 @@ class ScrapperNode:
         poller = zmq.Poller()
 
         # Always poll for worker activity on backend
-        poller.register(backend, zmq.POLLIN)
+        poller.register(self.backend, zmq.POLLIN)
 
         # Poll front-end only if we have available workers
-        poller.register(frontend, zmq.POLLIN)
+        poller.register(self.frontend, zmq.POLLIN)
 
         while True:
 
             socks = dict(poller.poll())
 
             # Handle worker activity on backend
-            if (backend in socks and socks[backend] == zmq.POLLIN):
+            if (self.backend in socks and socks[self.backend] == zmq.POLLIN):
 
                 # Queue worker address for FIFO routing
-                message = backend.recv_multipart()
+                message = self.backend.recv_multipart()
                 worker_addr = message[0]
 
                 # add worker back to the list of workers
@@ -83,60 +92,42 @@ class ScrapperNode:
             # poll on frontend only if workers are available
             if self.available_workers > 0:
 
-                if (frontend in socks and socks[frontend] == zmq.POLLIN):
+                if (self.frontend in socks and socks[self.frontend] == zmq.POLLIN):
                     # Now get next client request, route to LRU worker
                     # Client request is [address][empty][request]
 
-                    [broker_addr,client_addr,request,Baseinchord] = frontend.recv_multipart()
+                    [broker_addr,client_addr,request,Baseinchord] = self.frontend.recv_multipart()
 
                     baseURL = request.decode()
                     page = self.scrapp(baseURL)
                     
                    
-                    self.FirstLevelSrcap(frontend, backend, baseURL,
-                                            broker_addr, client_addr,
-                                            Baseinchord ,request, page)
+                    self.FirstLevelSrcap(baseURL, broker_addr, client_addr,
+                                        Baseinchord ,request, page)
 
-           
 
         #out of infinite loop: do some housekeeping
         time.sleep(1)
 
-        frontend.close()
-        backend.close()
+        self.frontend.close()
+        self.backend.close()
         context.term()
         
 
-    # def DepthScrap(self,baseURL,current_depth,top_depth):
-    #     self.available_workers += -1
-    #     worker_id = self.workers_queue.get()
-    #     backend.send_multipart([worker_id,broker_addr, 
-    #                             client_addr, baseURL.encode()])
-
-    #     if current_depth == top_depth:
-    #         return
-
-    #     for scraped_url in FindUrls(baseURL):
-    #         for found_url in self.DepthScrap(scraped_url, current_depth + 1, top_depth):
-    #             yield found_url
-
-    # def FindUrls(url):
-
-
-    # def ParseHtml(url):
-
-
     #scrapeo del html y urls
-    def FirstLevelSrcap(self,frontend,backend,baseURL,broker_addr,
+    def FirstLevelSrcap(self,baseURL,broker_addr,
                         client_addr,Baseinchord,request,page):
         if page == '-1':
-            frontend.send_multipart([broker_addr,client_addr, 
+            self.frontend.send_multipart([broker_addr,client_addr, 
                                 request,b'-1',Baseinchord])
                         
         else:
             html = page.text
 
             soup = BeautifulSoup(page.content, 'html.parser')
+
+            self.frontend.send_multipart([broker_addr,client_addr, 
+                                    request,html.encode(), Baseinchord])
 
             urls = []
             for link in soup.find_all('a'):
@@ -146,28 +137,17 @@ class ScrapperNode:
 
             not_repeted_urls = []
             for u in set(urls):
-                not_repeted_urls.append(baseURL + u)
+                url_to_procces = baseURL + u
+                self.urls_queue.put((broker_addr,client_addr,url_to_procces.encode()))
             
-            encoded_urls=[]
-            for u in not_repeted_urls:
-                encoded_urls.append(u.encode())
 
-            frontend.send_multipart([broker_addr,client_addr, 
-                                    request,html.encode(), Baseinchord])
-            
-            t1 = threading.Thread(target=self.BalanceWork,
-                args=[backend,not_repeted_urls,baseURL,
-                        broker_addr,client_addr,],daemon=True)
-
-            t1.start()
-
-
-    def BalanceWork(self,backend,not_repeted_urls,baseURL,broker_addr,client_addr):
-        for url in not_repeted_urls:
-                        self.available_workers += -1
-                        worker_id = self.workers_queue.get() 
-                        backend.send_multipart([worker_id,
-                                            broker_addr, client_addr, url.encode()])
+    def BalanceWork(self):
+       while True:
+            broker_addr, client_addr, url = self.urls_queue.get()
+            self.available_workers += -1
+            worker_id = self.workers_queue.get() 
+            self.backend.send_multipart([worker_id,
+                                broker_addr, client_addr, url])
 
     def worker_thread(self,worker_url, context, i):
         """ Worker using DEALER socket to do FIFO routing """
@@ -234,7 +214,7 @@ class ScrapperNode:
             raise CommunicationError
 
 
-    def SaveInChord(self, url, html, was_scraped):
+    def SaveInChord(self, url, html,was_scraped):
         try:
             id = getHash(url)
             entry_point = self.FindEntryPoint()
