@@ -1,3 +1,0 @@
-Pyro4==4.80
-serpent==1.40
-beautifulsoup4==4.9.3
