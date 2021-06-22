@@ -33,11 +33,9 @@ class ServerTask(threading.Thread):
         backend = context.socket(zmq.DEALER)
         backend.bind('inproc://backend')
 
-        workers = []
         for i in range(5):
             worker = ServerWorker(context)
             worker.start()
-            workers.append(worker)
 
         zmq.proxy(frontend, backend)
 
@@ -58,9 +56,9 @@ class ServerWorker(threading.Thread):
 
         context = zmq.Context.instance()
         socketForScraper = context.socket(zmq.DEALER)
+       
         socketForScraper.connect(f"tcp://10.0.0.3:9091")
         socketForScraper.connect(f"tcp://10.0.0.4:9091")
-       
 
         poller = zmq.Poller()
         poller.register(socketForScraper, zmq.POLLIN)
@@ -77,46 +75,27 @@ class ServerWorker(threading.Thread):
                 r = self.CheckInChord(url.decode())
                 if r:
                     worker.send_multipart([ident,url,r[0].encode()])
+
                     if r[1] == 0:
                         socketForScraper.send_multipart([url,b'1'])
                 else:
                      socketForScraper.send_multipart([url,b'0'])
+
 
             if (socketForScraper in socks and socks[socketForScraper] == zmq.POLLIN):
                     result = socketForScraper.recv_multipart(zmq.NOBLOCK)
                     tprint('Worker received %s from scraper' % result[0])
                     url = result[0].decode()
                     data = result[1].decode()
-                    send = result[2]
                     
-                    if send == b'0':
-                        worker.send_multipart([ident,result[0],result[1]])
-               
-                        if data != '-1':
-                            self.SaveInChord(url, data,1)
-                
+                    worker.send_multipart([ident,result[0],result[1]])
+                       
         worker.close()
-
 
     def CheckInChord(self,url):
         hashedUrl = getHash(url)
         return self.LookUrlInChord(hashedUrl,url) 
        
-       
-    def SaveInChord(self, url, html, was_scraped):
-        try:
-            id = getHash(url)
-            entry_point = self.FindEntryPoint()
-            if entry_point:
-                chord_node_id = entry_point.LookUp(id)
-                chord_node_with_html = Pyro4.Proxy(f"PYRONAME:Node.{chord_node_id}")
-                chord_node_with_html.Save(url,html,was_scraped)
-            else: 
-                return None
-        except CommunicationError:
-            print('ERRRRRROORRRRR')
-
-            pass
 
     def FindEntryPoint(self):
         with Pyro4.locateNS() as ns:
@@ -146,6 +125,7 @@ class ServerWorker(threading.Thread):
         except CommunicationError as e:
             print(e)
             return None
+
 
 def main():
    

@@ -36,6 +36,7 @@ class ScrapperNode:
         context = zmq.Context()
 
         frontend = context.socket(zmq.ROUTER)
+        
         frontend.connect(f"tcp://10.0.0.3:9092")
         frontend.connect(f"tcp://10.0.0.4:9092")
 
@@ -57,6 +58,7 @@ class ScrapperNode:
             thread = threading.Thread(target=self.worker_thread,
                                     args=(self.url_worker, context, i, ))
             thread.start()
+
 
         # Logic of FIFO balance loop   
 
@@ -83,7 +85,6 @@ class ScrapperNode:
                 # add worker back to the list of workers
                 self.available_workers += 1
 
-                # quitar el with si da palo
                 with threading.Lock():
                     self.workers_queue.put(worker_addr)
                 
@@ -104,27 +105,31 @@ class ScrapperNode:
                     self.FirstLevelSrcap(baseURL, broker_addr, client_addr,
                                         Baseinchord ,request, page)
 
+
         #out of infinite loop: do some housekeeping
         time.sleep(1)
 
         self.frontend.close()
         self.backend.close()
         context.term()
+        
 
     #scrapeo del html y urls
     def FirstLevelSrcap(self,baseURL,broker_addr,
                         client_addr,Baseinchord,request,page):
         if page == '-1':
             self.frontend.send_multipart([broker_addr,client_addr, 
-                                request,b'-1',Baseinchord])
+                                request,b'-1'])
                         
         else:
             html = page.text
-
             soup = BeautifulSoup(page.content, 'html.parser')
 
-            self.frontend.send_multipart([broker_addr,client_addr, 
-                                    request,html.encode(), Baseinchord])
+            if Baseinchord != b'1': 
+                self.frontend.send_multipart([broker_addr,client_addr, 
+                                            request,html.encode()])
+
+                self.SaveInChord(baseURL, html, 1)
 
             urls = []
             for link in soup.find_all('a'):
@@ -133,16 +138,17 @@ class ScrapperNode:
                     urls.append(href)
 
             not_repeted_urls = []
-            for u in set(urls):
-                url_to_procces = baseURL + u
-                self.urls_queue.put((broker_addr,client_addr,url_to_procces.encode()))
+            with threading.Lock():
+                for u in set(urls):
+                    url_to_procces = baseURL + u
+                    self.urls_queue.put((broker_addr,client_addr,url_to_procces.encode()))
             
 
     def BalanceWork(self):
        while True:
             broker_addr, client_addr, url = self.urls_queue.get()
-            self.available_workers += -1
             worker_id = self.workers_queue.get() 
+            self.available_workers += -1
             self.backend.send_multipart([worker_id,
                                 broker_addr, client_addr, url])
 
@@ -169,6 +175,7 @@ class ScrapperNode:
                                 url ), end='')
 
                 r = '-1'
+                
                 
                 try:
                     r = self.LookUrlInChord(getHash(url), url)          
@@ -209,6 +216,7 @@ class ScrapperNode:
         else:
             raise CommunicationError
 
+
     def SaveInChord(self, url, html,was_scraped):
         try:
             id = getHash(url)
@@ -220,9 +228,10 @@ class ScrapperNode:
             else: 
                 return None
         except CommunicationError:
-            print('ERRRRRROORRRRR')
+            print('error trying to save ' + url)
             pass
             
+
 
     def scrapp(self, url):
         try:

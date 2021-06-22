@@ -109,7 +109,7 @@ Una vez que la petición llega al Server Scraper, mediante un socket zmq.ROUTER,
 
 ##### Docker
 
-Para realizar un testing adecuado de la aplicación realizada e incluso asegurar un ambiente seguro en un entorno de producción, utilizamos _docker_ como herramienta que garantiza dichas cuestiones. Nos apoyamos en una imagen de python:3.7, no empleamos un alpine debido a que una de las bibliotecas que se utilizaron durante la realización del proyecto fue _zmq_, la cual posee integraciones en C y una imagen alpine de python, según nuestas indagaciones, no es adecuada para este tipo de extensiones; debido a que faltan encabezados del lenguaje. Brindamos a continuación, de cualquier forma, un Dockerfile que se pudiera emplear para la solución del problema en cuestión; agregando que no aseguramos el correcto funcionamiento del mismo, ya que no tuvimos oportunidad de probarlo.
+Para realizar un testing adecuado de la aplicación realizada e incluso asegurar un ambiente seguro en un entorno de producción, utilizamos _docker_ como herramienta que garantiza dichas cuestiones. Nos apoyamos en una imagen de python:3.7, no empleamos un alpine debido a que una de las bibliotecas que se utilizaron durante la realización del proyecto fue _zmq_, la cual posee integraciones en C y una imagen alpine de python, según nuestas indagaciones, no es adecuada para este tipo de extensiones; debido a que faltan encabezados del lenguaje. Brindamos a continuación, de cualquier forma, un Dockerfile que se pudiera emplear para la solución del problema en cuestión; agregando que no aseguramos el correcto funcionamiento del mismo, ya que no tuvimos oportunidad de probarlo. (por problemas de conectividad)
 
 ```dockerfile
 FROM alpine:edge

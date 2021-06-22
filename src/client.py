@@ -66,6 +66,7 @@ class Client:
 
     def Send(self):
         while True:
+            time.sleep(0.3)
             url = input('url to be scraped: ')
             self.socket.send(url.encode())
 
