@@ -76,53 +76,25 @@ class ServerWorker(threading.Thread):
                  
                 r = self.CheckInChord(url.decode())
                 if r:
-                    # print(type(r[0]))
-                    # print(r[0])
                     worker.send_multipart([ident,url,r[0].encode()])
                     if r[1] == 0:
                         socketForScraper.send_multipart([url,b'1'])
                 else:
                      socketForScraper.send_multipart([url,b'0'])
-                    
-                    
-                # for u,html in r:
-                #     if html:
-                #         worker.send_multipart([ident,u.encode(),html.encode()])
-                #         if len(r)==1:
-                #             socketForScraper.send_multipart([r.encode(),b'1',b'1'])
-                #     elif len(r) > 1:   
-                #         socketForScraper.send_multipart([u.encode(),b'0',b'0'])
-                #     elif len(r) == 1:
-                #         url,_= r[0]
-                #         socketForScraper.send_multipart([url.encode(),b'0',b'1'])
-
 
             if (socketForScraper in socks and socks[socketForScraper] == zmq.POLLIN):
-                #aki se recibe url,html,urls_scraped
-                
                     result = socketForScraper.recv_multipart(zmq.NOBLOCK)
                     tprint('Worker received %s from scraper' % result[0])
                     url = result[0].decode()
                     data = result[1].decode()
                     send = result[2]
                     
-                    # scraped_urls = []
-
-                    # try:
-                    #     scraped_urls = result[3:]
-                    # except IndexError:
-                    #     pass
-                    
                     if send == b'0':
-                        # decode_scraped_urls = list(map(lambda x: x.decode(), scraped_urls))
                         worker.send_multipart([ident,result[0],result[1]])
                
                         if data != '-1':
                             self.SaveInChord(url, data,1)
                 
-             
-            #     time.sleep(1. / (randint(1,10)))
-           
         worker.close()
 
 
@@ -174,10 +146,6 @@ class ServerWorker(threading.Thread):
         except CommunicationError as e:
             print(e)
             return None
-            #probar otro entry point
-            pass
-
-
 
 def main():
    

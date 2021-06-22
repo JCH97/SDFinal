@@ -58,7 +58,6 @@ class ScrapperNode:
                                     args=(self.url_worker, context, i, ))
             thread.start()
 
-
         # Logic of FIFO balance loop   
 
         # init poller
@@ -105,14 +104,12 @@ class ScrapperNode:
                     self.FirstLevelSrcap(baseURL, broker_addr, client_addr,
                                         Baseinchord ,request, page)
 
-
         #out of infinite loop: do some housekeeping
         time.sleep(1)
 
         self.frontend.close()
         self.backend.close()
         context.term()
-        
 
     #scrapeo del html y urls
     def FirstLevelSrcap(self,baseURL,broker_addr,
@@ -173,7 +170,6 @@ class ScrapperNode:
 
                 r = '-1'
                 
-                
                 try:
                     r = self.LookUrlInChord(getHash(url), url)          
                 except CommunicationError:
@@ -213,7 +209,6 @@ class ScrapperNode:
         else:
             raise CommunicationError
 
-
     def SaveInChord(self, url, html,was_scraped):
         try:
             id = getHash(url)
@@ -228,7 +223,6 @@ class ScrapperNode:
             print('ERRRRRROORRRRR')
             pass
             
-
 
     def scrapp(self, url):
         try:

@@ -357,7 +357,6 @@ def init(daemon):
     t.setDaemon(True)
     t.start()
 
-
 def main(argv):
     while True:
         uri = input('Enter uri of node in chord if you want, if not press enter:\n')
@@ -371,7 +370,6 @@ def main(argv):
         except:
             print('Wrong Uri!!')
             
-    
     while True:
         id = input('Give a id to your node, if not prees enter:\n')
         try:

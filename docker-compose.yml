@@ -2,7 +2,7 @@ version: "3.2"
 
 services:
   pyro-ns:
-    image: jch/chord
+    image: jch/chord:2.0
     container_name: pyro-ns
     restart: unless-stopped
     command: /bin/sh -c "echo 'export IP=10.0.0.2' >> ~/.bashrc && pyro4-ns -n '10.0.0.2'"
@@ -13,7 +13,7 @@ services:
         ipv4_address: 10.0.0.2
 
   broker-1:
-    image: jch/chord
+    image: jch/chord:2.0
     container_name: broker-1
     restart: unless-stopped
     command: /bin/sh -c "python src/Broker.py"
@@ -27,7 +27,7 @@ services:
       - 9092
 
   broker-2:
-    image: jch/chord
+    image: jch/chord:2.0
     container_name: broker-2
     restart: unless-stopped
     command: /bin/sh -c "python src/Broker.py"
@@ -41,7 +41,7 @@ services:
       - 9092
   
   router-1:
-    image: jch/chord
+    image: jch/chord:2.0
     container_name: router-1
     restart: unless-stopped
     command: /bin/sh -c "python src/Router.py"
@@ -54,7 +54,7 @@ services:
       - 9092
 
   router-2:
-    image: jch/chord
+    image: jch/chord:2.0
     container_name: router-2
     restart: unless-stopped
     command: /bin/sh -c "python src/Router.py"
@@ -67,7 +67,7 @@ services:
       - 9092
 
   dealer-1:
-    image: jch/chord
+    image: jch/chord:2.0
     container_name: dealer-1
     restart: unless-stopped
     command: /bin/sh -c "python src/DealerScraper.py"
@@ -80,7 +80,7 @@ services:
       - 9092
 
   dealer-2:
-    image: jch/chord
+    image: jch/chord:2.0
     container_name: dealer-2
     restart: unless-stopped
     command: /bin/sh -c "python src/DealerScraper.py"
@@ -93,7 +93,7 @@ services:
       - 9092
   
   chord-node-1:
-    image: jch/chord
+    image: jch/chord:2.0
     container_name: chord-node-1
     command: /bin/sh -c "echo 'export IP=10.0.0.10' >> ~/.bashrc && while sleep 1000; do :; done"
     volumes:
@@ -103,7 +103,7 @@ services:
         ipv4_address: 10.0.0.10
 
   chord-node-2:
-    image: jch/chord
+    image: jch/chord:2.0
     container_name: chord-node-2
     command: /bin/sh -c "echo 'export IP=10.0.0.11' >> ~/.bashrc && while sleep 1000; do :; done"
     volumes:
@@ -113,7 +113,7 @@ services:
         ipv4_address: 10.0.0.11
 
   chord-node-3:
-    image: jch/chord
+    image: jch/chord:2.0
     container_name: chord-node-3
     command: /bin/sh -c "echo 'export IP=10.0.0.12' >> ~/.bashrc && while sleep 1000; do :; done"
     volumes:
@@ -123,7 +123,7 @@ services:
         ipv4_address: 10.0.0.12
 
   chord-node-4:
-    image: jch/chord
+    image: jch/chord:2.0
     container_name: chord-node-4
     command: /bin/sh -c "echo 'export IP=10.0.0.13' >> ~/.bashrc && while sleep 1000; do :; done"
     volumes:
@@ -133,7 +133,7 @@ services:
         ipv4_address: 10.0.0.13
 
   chord-node-5:
-    image: jch/chord
+    image: jch/chord:2.0
     container_name: chord-node-5
     command: /bin/sh -c "echo 'export IP=10.0.0.14' >> ~/.bashrc && while sleep 1000; do :; done"
     volumes:
@@ -143,7 +143,7 @@ services:
         ipv4_address: 10.0.0.14
 
   chord-node-6:
-    image: jch/chord
+    image: jch/chord:2.0
     container_name: chord-node-6
     command: /bin/sh -c "echo 'export IP=10.0.0.15' >> ~/.bashrc && while sleep 1000; do :; done"
     volumes:
@@ -154,7 +154,7 @@ services:
     expose:
       - 5000
   chord-node-7:
-    image: jch/chord
+    image: jch/chord:2.0
     container_name: chord-node-7
     command: /bin/sh -c "echo 'export IP=10.0.0.16' >> ~/.bashrc && while sleep 1000; do :; done"
     volumes:
@@ -164,7 +164,7 @@ services:
         ipv4_address: 10.0.0.16
 
   chord-node-8:
-    image: jch/chord
+    image: jch/chord:2.0
     container_name: chord-node-8
     command: /bin/sh -c "echo 'export IP=10.0.0.17' >> ~/.bashrc && while sleep 1000; do :; done"
     volumes:
@@ -174,7 +174,7 @@ services:
         ipv4_address: 10.0.0.17
 
   chord-node-9:
-    image: jch/chord
+    image: jch/chord:2.0
     container_name: chord-node-9
     command: /bin/sh -c "echo 'export IP=10.0.0.18' >> ~/.bashrc && while sleep 1000; do :; done"
     volumes:
@@ -184,7 +184,7 @@ services:
         ipv4_address: 10.0.0.18
 
   chord-node-10:
-    image: jch/chord
+    image: jch/chord:2.0
     container_name: chord-node-10
     command: /bin/sh -c "echo 'export IP=10.0.0.19' >> ~/.bashrc && while sleep 1000; do :; done"
     volumes:
