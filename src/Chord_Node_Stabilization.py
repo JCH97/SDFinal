@@ -254,11 +254,11 @@ class Node:
 
     def RunStabilize(self):
         while self.alive:
-            self.ExecInBG(self.Stabilize, time.time() + 5)
+            self.ExecInBG(self.Stabilize, time.time() + 3)
 
     def RunFixFt(self):
         while self.alive:
-            self.ExecInBG(self.Fix_Fingers, time.time() + 9)
+            self.ExecInBG(self.Fix_Fingers, time.time() + 5)
 
     def ExecInBG(self,func,timeToWait):
         timeTask =  sched.scheduler(time.time,time.sleep)
